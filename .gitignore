@@ -1,0 +1,51 @@
+# Environments and generated Python files
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Runtime state, local data and credentials
+.runtime/
+.market_cache/
+.mpl_cache/
+.fund_flow_data/
+.hk_scan_data/
+**/.market_cache/
+**/.mpl_cache/
+**/.fund_flow_data/
+**/.hk_scan_data/
+.streamlit/secrets.toml
+.env
+**/.user_stocks.json
+
+# Local agent metadata
+.agents/
+.claude/
+**/.agents/
+**/.claude/
+
+# OS and build artifacts
+.DS_Store
+dist/
+build/
+*.zip
+
+# Deprecated root-level US prototype. The maintained implementation is systems/us/.
+/backtest/
+/data_sources/
+/execution/
+/risk/
+/strategies/
+/tests/
+/config.py
+/dashboard.py
+/data_fetcher.py
+/diagnose.py
+/indicators.py
+/market_clock.py
+/market_data.py
+/quote_freshness.py
+/run_cli.py
+/signal_engine.py
+/trade_plan.py

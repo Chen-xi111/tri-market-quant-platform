@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+exec "$PROJECT_DIR/run_us.sh" "$@"

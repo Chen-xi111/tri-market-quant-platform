@@ -1,0 +1,31 @@
+[project]
+name = "tri-market-quant-platform"
+version = "0.1.0"
+description = "A unified research and paper-trading platform for China, Hong Kong and US equities."
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "akshare>=1.18.82",
+    "matplotlib>=3.7.0",
+    "mplfinance>=0.12.7",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scikit-learn>=1.4.0",
+    "streamlit>=1.61.1",
+    "ta>=0.10.0",
+    "yfinance>=1.5.0",
+]
+
+[project.optional-dependencies]
+brokers = ["futu-api>=10.9.6908"]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.12.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [".venv", ".runtime"]
