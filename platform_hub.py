@@ -21,6 +21,8 @@ class MarketApp:
     port: int
     entrypoint: str
     focus: str
+    research_question: str
+    venue_note: str
     capabilities: tuple[str, ...]
 
 
@@ -31,7 +33,11 @@ MARKETS: dict[str, MarketApp] = {
         short_name="A-shares",
         port=8503,
         entrypoint="systems/cn/streamlit_app.py",
-        focus="Fund-flow discovery, opportunity scoring, strategy validation and paper execution.",
+        focus="Cross-sectional discovery and validation under mainland venue constraints.",
+        research_question=(
+            "Can capital-flow strength improve candidate selection before a timing rule is applied?"
+        ),
+        venue_note="CNY · T+1 equity sales · board lots and venue fees",
         capabilities=(
             "Market-wide fund-flow radar",
             "Daily opportunity scanner",
@@ -45,7 +51,11 @@ MARKETS: dict[str, MarketApp] = {
         short_name="Hong Kong",
         port=8502,
         entrypoint="systems/hk/streamlit_app.py",
-        focus="Market scanning with Hong Kong lot, fee and limited-history handling.",
+        focus="Market scanning and signal validation with Hong Kong execution rules.",
+        research_question=(
+            "Do trend and liquidity filters remain useful after board-lot and cost assumptions?"
+        ),
+        venue_note="HKD · board-lot orders · stamp duty and exchange fees",
         capabilities=(
             "Market-wide scanner",
             "Strong-confidence candidates",
@@ -59,7 +69,11 @@ MARKETS: dict[str, MarketApp] = {
         short_name="US equities",
         port=8501,
         entrypoint="systems/us/dashboard.py",
-        focus="Cross-sectional ranking, live quote health, robust backtesting and broker-safe paper trading.",
+        focus="Cross-sectional ranking and time-aware validation for US equities.",
+        research_question=(
+            "Can transparent signals survive a chronological holdout and realistic turnover costs?"
+        ),
+        venue_note="USD · one-share lots · quote-freshness and session controls",
         capabilities=(
             "Cross-sectional stock ranking",
             "Quote freshness and fallback chain",
@@ -106,6 +120,10 @@ def render_market_page(key: str) -> None:
 
     st.title(market.name)
     st.caption(market.focus)
+
+    with st.container(border=True):
+        st.markdown(f"**Research question** — {market.research_question}")
+        st.caption(market.venue_note)
 
     if public_mode_enabled():
         render_demo_dashboard(key)
