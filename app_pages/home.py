@@ -55,7 +55,7 @@ with st.container(horizontal=True):
     )
     st.metric(
         "Automated tests",
-        139,
+        157,
         delta="Plus 19 subtests",
         delta_color="off",
         delta_arrow="off",

@@ -1,77 +1,97 @@
 # Tri-market quantitative research platform
 
-A unified, research-first workspace for China A-shares, Hong Kong equities and US equities. The repository combines market data fallbacks, seven explainable strategy families, time-aware backtesting, robustness checks, risk controls, market scanners and paper-execution adapters behind one local portal.
+An inspectable equity-research system for China A-shares, Hong Kong equities and US equities. The public portfolio runs offline from versioned snapshots; the full local workspace adds provider fallbacks, venue-aware backtests, scanners, risk controls and paper-execution adapters.
 
-> This is an educational research project, not investment advice. Public market data can be delayed or incomplete. The unified launcher does not enable live trading.
+> Educational research software, not investment advice. Backtests are hypothesis evidence, not permission to trade.
 
-## Why this project exists
+## What this demonstrates
 
-The goal is not to present a single optimized equity curve. It is to make the complete research chain inspectable:
+| Area | Evidence in the repository |
+|---|---|
+| Quant research | Explainable signals, one-bar lag, chronological 70/30 holdout and train/validation comparison |
+| Robustness | Transaction-cost sensitivity, drawdown paths and parameter-neighborhood stability |
+| Market engineering | Symbol normalization, quote freshness, provider fallbacks and venue-specific fee/lot rules |
+| Production judgment | Bounded caches, process isolation, health checks, CI and deterministic demo fixtures |
+| Safety | Read-only public mode, paper-first execution and broker/live-port boundaries |
 
-```text
-market data -> feature/signal generation -> time-ordered validation
-            -> cost and risk model -> paper execution -> monitoring
+The full local services contain seven strategy families. The compact public demo deliberately uses four transparent long-only rules so every assumption can be inspected quickly.
+
+## 30-second demo path
+
+1. Open a market and choose one of three versioned instruments.
+2. Choose a research rule and run the analysis.
+3. Read the held-out return, Sharpe degradation, drawdown and train/validation scorecard.
+4. Open **Robustness** to test higher costs and neighboring parameters.
+5. Open **Data and assumptions** to inspect provenance, signal lag and recent observations.
+
+The interface does not select the most flattering run or promise profitability. It labels evidence as consistent, mixed or weak within the chosen snapshot.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Browser -->|:8500| Portal[Streamlit portfolio portal]
+    Portal --> CN[China demo]
+    Portal --> HK[Hong Kong demo]
+    Portal --> US[US demo]
+    Fixtures[Versioned OHLCV snapshots] --> Engine[Transparent research engine]
+    Engine --> CN
+    Engine --> HK
+    Engine --> US
+    Engine --> Evidence[Holdout · costs · drawdown · stability]
 ```
 
-Each market service remains process-isolated because tickers, sessions, lot rules, fee schedules, data adapters and broker state differ across venues. The portal supplies one entry point without allowing one market's module or session state to leak into another.
+Public deployment is one Streamlit process and one exposed port. The full local launcher keeps the three original market applications in separate processes because their import roots, sessions, provider state, venue rules and broker state must not leak across markets.
 
-## Market coverage
-
-| Workspace | Market-specific capabilities | Default port |
-|---|---|---:|
-| China A-shares | Fund-flow radar, daily opportunity scoring, A-share fee/T+1 constraints, quant-research evidence page | 8503 |
-| Hong Kong | Market-wide scanner, opportunity scoring, board-lot/fee rules, limited-history safeguards | 8502 |
-| US equities | Cross-sectional ranking, quote-freshness chain, IBKR paper safety boundary, strategy tournament | 8501 |
-| Unified portal | Health overview, embedded workspaces and research methodology | 8500 |
-
-Shared strategy families include trend riding, moving-average crossover, Bollinger mean reversion, volume breakout, multi-timeframe confirmation, multi-factor alpha and an ML classifier. The strategy count should not be interpreted as independent diversification.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for both runtime topologies and [docs/PORTFOLIO_WALKTHROUGH.md](docs/PORTFOLIO_WALKTHROUGH.md) for an interview-ready walkthrough.
 
 ## Quick start
 
 Python 3.11 or 3.12 and [uv](https://docs.astral.sh/uv/) are recommended.
+
+### Public portfolio — one process, offline data
+
+```bash
+uv sync --extra dev
+./run_public.sh
+```
+
+Open [http://localhost:8500](http://localhost:8500). No broker, API key or live quote service is required.
+
+### Full local workspace — four isolated processes
 
 ```bash
 uv sync --extra dev
 ./run_all.sh
 ```
 
-Open [http://localhost:8500](http://localhost:8500). One `Control-C` stops the portal and all three market services.
+The portal uses port 8500; the US, Hong Kong and China services use 8501, 8502 and 8503. One `Control-C` stops processes owned by the launcher. A single market can also be started with `./run_us.sh`, `./run_hk.sh` or `./run_cn.sh`.
 
-To run only one market:
+Optional Futu OpenD support is installed with `uv sync --extra dev --extra brokers`. The IBKR TWS Python API is distributed separately; see [IBKR_SETUP.md](IBKR_SETUP.md).
 
-```bash
-./run_cn.sh     # A-shares, port 8503
-./run_hk.sh     # Hong Kong, port 8502
-./run_us.sh     # US equities, port 8501
+## Research contract
+
+```text
+timestamped data -> explainable signal -> one-bar execution lag
+                 -> chronological holdout -> costs and venue rules
+                 -> robustness checks -> paper monitoring
 ```
 
-Optional Futu OpenD support is installed separately:
+- Historical observations stay in time order; future rows never fit earlier decisions.
+- Fees, slippage, turnover, lot sizes and position limits remain visible.
+- Parameter scans show the full neighborhood instead of retaining only the best value.
+- Quote age and provider failures are surfaced rather than silently labelled live.
+- Public mode cannot render local broker controls or child workspaces.
 
-```bash
-uv sync --extra dev --extra brokers
-```
+The detailed evidence contract is in [docs/VALIDATION.md](docs/VALIDATION.md).
 
-The IBKR TWS Python API is distributed by Interactive Brokers rather than through supported PyPI releases; see [IBKR_SETUP.md](IBKR_SETUP.md).
-
-## Tests
-
-The three services intentionally retain isolated import roots. Run the complete suite through the orchestrator:
+## Tests and CI
 
 ```bash
 ./test_all.sh
 ```
 
-CI executes the same market suites independently. Tests cover backtest accounting and realism, parameter-grid validation, quote freshness, market clocks, data-source switching, watchlists, venue trading rules, scanners and broker safety.
-
-## Reproducibility and research discipline
-
-- Historical observations are split in time order; the UI exposes train/validation comparisons.
-- Commission, slippage, lot sizes, minimum holding rules and position limits are part of the engine.
-- Parameter scans report stability across grids rather than retaining only a best result.
-- Quote timestamps and fallback failures remain visible instead of being silently labelled live.
-- Paper trading is the default. The IBKR adapter rejects live ports unless its code-level safety boundary is explicitly changed.
-
-See [docs/VALIDATION.md](docs/VALIDATION.md) for the evidence contract and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system boundaries.
+The current suite contains **157 standard tests plus 19 generated subtests** across the public portfolio and three isolated market services. It covers accounting realism, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs the portfolio checks and each market suite independently.
 
 ## Docker
 
@@ -79,30 +99,30 @@ See [docs/VALIDATION.md](docs/VALIDATION.md) for the evidence contract and [docs
 docker compose up --build
 ```
 
-The container exposes ports 8500–8503. The browser still enters through the portal at port 8500.
+Docker starts the read-only public portfolio and exposes only port 8500. The three local market services and broker controls are neither started nor exposed.
 
 ## Repository layout
 
 ```text
 .
-├── streamlit_app.py          # unified portal
-├── app_pages/                # portal pages
-├── platform_hub.py           # service manifest and health checks
-├── scripts/                  # process and test orchestration
+├── streamlit_app.py          # single-entry portfolio portal
+├── app_pages/                # overview, market demos and methodology
+├── portfolio/                # deterministic demo engine, UI and tests
+├── demo_data/                # compact versioned public snapshots
 ├── systems/
-│   ├── cn/                   # China A-share service
-│   ├── hk/                   # Hong Kong service
-│   └── us/                   # US service
-├── docs/                     # architecture and validation notes
+│   ├── cn/                   # China A-share research service
+│   ├── hk/                   # Hong Kong research service
+│   └── us/                   # US research and paper-execution service
+├── scripts/                  # fixture, launcher and test orchestration
+├── docs/                     # architecture, validation and walkthrough
 ├── pyproject.toml            # reproducible dependencies
 └── Dockerfile
 ```
 
-## Current limitations
+## Known limitations
 
-- Public data sources are not point-in-time institutional datasets and may revise history.
-- Daily/snapshot research does not model exchange queue priority or tick-level market impact.
-- Scheduled scanners run while their corresponding Streamlit process is alive; production scheduling would require a separate durable worker.
-- Broker connectivity is environment-dependent and is not exercised in public CI.
-
-These limitations are deliberate disclosures. Backtest output should be treated as a research result that still requires independent paper observation.
+- Public-provider history is not a point-in-time, survivorship-free institutional dataset.
+- Daily and snapshot research cannot model queue priority or tick-level market impact.
+- Several strategies share technical inputs; strategy count is not proof of diversification.
+- Scheduled scanners depend on their local Streamlit service; production scheduling needs a durable worker.
+- Broker connectivity is environment-dependent and intentionally excluded from public CI.

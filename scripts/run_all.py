@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the portal and all three market services as one local application."""
+"""Run the public portal or the complete four-process local workspace."""
 
 from __future__ import annotations
 
@@ -34,6 +34,21 @@ SERVICES = (
     Service("cn", ROOT / "systems/cn", ROOT / "systems/cn/streamlit_app.py", 8503),
     Service("portal", ROOT, ROOT / "streamlit_app.py", 8500),
 )
+
+
+def public_mode_requested(environment: dict[str, str]) -> bool:
+    return environment.get("QUANT_PUBLIC_MODE", "false").strip().lower() not in {
+        "false",
+        "0",
+        "no",
+        "off",
+    }
+
+
+def active_services(environment: dict[str, str]) -> tuple[Service, ...]:
+    if public_mode_requested(environment):
+        return tuple(service for service in SERVICES if service.name == "portal")
+    return SERVICES
 
 
 def parse_args() -> argparse.Namespace:
@@ -111,14 +126,26 @@ def main() -> int:
         print(f"Python interpreter not found: {python}", file=sys.stderr)
         return 2
 
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false",
+            "QUANT_INTERNAL_HOST": "127.0.0.1",
+            "QUANT_PUBLIC_HOST": args.public_host,
+            "QUANT_PUBLIC_SCHEME": "http",
+        }
+    )
+    environment.setdefault("QUANT_PUBLIC_MODE", "false")
+    services = active_services(environment)
+
     reused = {
         service.name
-        for service in SERVICES
+        for service in services
         if service.name != "portal" and health_is_ready(args.host, service.port)
     }
     blocked = [
         service.port
-        for service in SERVICES
+        for service in services
         if service.name not in reused and port_is_open(args.host, service.port)
     ]
     if blocked:
@@ -141,19 +168,8 @@ def main() -> int:
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
 
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false",
-            "QUANT_INTERNAL_HOST": "127.0.0.1",
-            "QUANT_PUBLIC_HOST": args.public_host,
-            "QUANT_PUBLIC_SCHEME": "http",
-        }
-    )
-    environment.setdefault("QUANT_PUBLIC_MODE", "false")
-
     try:
-        for service in SERVICES:
+        for service in services:
             if service.name in reused:
                 continue
             market_cache = service.cwd / ".market_cache"
@@ -190,7 +206,7 @@ def main() -> int:
             managed.append((service, process))
 
         deadline = time.monotonic() + 35
-        pending = {service.name: service for service in SERVICES if service.name not in reused}
+        pending = {service.name: service for service in services if service.name not in reused}
         while pending and time.monotonic() < deadline and not stopping:
             for service, process in managed:
                 if service.name not in pending:
@@ -212,9 +228,12 @@ def main() -> int:
 
         print("Tri-market quant platform is ready.")
         print(f"Portal:       http://{args.public_host}:8500")
-        print(f"US equities:  http://{args.public_host}:8501")
-        print(f"Hong Kong:    http://{args.public_host}:8502")
-        print(f"China A:      http://{args.public_host}:8503")
+        if public_mode_requested(environment):
+            print("Public mode: fixed snapshots, read-only UI, no child market services.")
+        else:
+            print(f"US equities:  http://{args.public_host}:8501")
+            print(f"Hong Kong:    http://{args.public_host}:8502")
+            print(f"China A:      http://{args.public_host}:8503")
         if reused:
             print("Reused existing healthy services: " + ", ".join(sorted(reused)))
             print("Those reused services are not stopped by this launcher.")

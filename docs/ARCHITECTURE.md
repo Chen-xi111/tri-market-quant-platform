@@ -1,6 +1,19 @@
 # Architecture
 
-## Runtime topology
+## Public portfolio topology
+
+```text
+Browser
+  |
+  +-- :8500 Streamlit portal (one process)
+        |-- project overview and methodology
+        |-- China / Hong Kong / US demo pages
+        +-- versioned fixtures -> demo engine -> evidence views
+```
+
+`QUANT_PUBLIC_MODE=true` makes `scripts/run_all.py` start only the portal. The portal reads repository fixtures, never renders child-service iframes and contains no path to broker controls. Docker uses this mode and exposes only port 8500.
+
+## Full local topology
 
 ```text
 Browser
@@ -11,9 +24,9 @@ Browser
         +-- health + iframe --> :8503 China A-share service
 ```
 
-`scripts/run_all.py` owns the four child processes, waits for Streamlit health endpoints and terminates every service when the parent receives `SIGINT` or `SIGTERM`. Logs are written to the ignored `.runtime/logs/` directory.
+`./run_all.sh` explicitly uses local mode. The launcher owns the services it starts, waits for Streamlit health endpoints and terminates them on `SIGINT` or `SIGTERM`. Logs are written to the ignored `.runtime/logs/` directory. A healthy child process that was already running can be reused and is not terminated by the launcher.
 
-## Why process isolation is intentional
+## Why local process isolation is intentional
 
 The original market applications use short top-level module names such as `config`, `market_data`, `strategies` and `execution`. Importing three versions into one Python interpreter would create ambiguous module resolution and shared Streamlit state. Separate processes provide hard boundaries for:
 
@@ -23,11 +36,11 @@ The original market applications use short top-level module names such as `confi
 - Streamlit cache and session state;
 - local scan and market-data caches.
 
-The portal is therefore an orchestration layer, not a source-code concatenation layer.
+The portal is therefore an orchestration layer, not a source-code concatenation layer. The public demo can remain single-process because its compact engine has one shared package and no broker/provider runtime state.
 
 ## Service layers
 
-Each market service follows the same conceptual flow:
+Each full market service follows the same conceptual flow:
 
 1. `data_sources/` adapts external providers to a standard OHLCV/quote shape.
 2. `market_data.py` manages provider selection and fallback behavior.
@@ -37,4 +50,4 @@ Each market service follows the same conceptual flow:
 6. `execution/` keeps paper and optional broker adapters behind safety gates.
 7. Streamlit pages present research, monitoring and scanner state.
 
-Market-wide discovery is deliberately venue-specific: `fund_flow/` for A-shares and `market_scan/` for Hong Kong.
+Market-wide discovery remains venue-specific: `fund_flow/` for A-shares and `market_scan/` for Hong Kong.

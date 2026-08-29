@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run each market's tests in isolation to avoid legacy top-level import collisions."""
+"""Run portfolio and market tests with the isolation each suite requires."""
 
 from __future__ import annotations
 
@@ -8,26 +8,30 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MARKETS = ("cn", "hk", "us")
+SUITES = (
+    ("portfolio", ROOT, ("portfolio/tests",)),
+    ("cn", ROOT / "systems/cn", ()),
+    ("hk", ROOT / "systems/hk", ()),
+    ("us", ROOT / "systems/us", ()),
+)
 
 
 def main() -> int:
     failures: list[str] = []
-    for market in MARKETS:
-        cwd = ROOT / "systems" / market
-        print(f"\n=== {market.upper()} test suite ===", flush=True)
+    for name, cwd, targets in SUITES:
+        print(f"\n=== {name.upper()} test suite ===", flush=True)
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q"],
+            [sys.executable, "-m", "pytest", "-q", *targets],
             cwd=cwd,
             check=False,
         )
         if result.returncode:
-            failures.append(market)
+            failures.append(name)
 
     if failures:
         print("\nFailed suites: " + ", ".join(failures), file=sys.stderr)
         return 1
-    print("\nAll market test suites passed.")
+    print("\nAll portfolio and market test suites passed.")
     return 0
 
 
