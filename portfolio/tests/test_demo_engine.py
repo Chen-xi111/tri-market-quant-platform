@@ -44,6 +44,15 @@ def test_higher_costs_do_not_improve_fixed_strategy_return():
     assert returns.is_monotonic_decreasing
 
 
+def test_cached_price_fixtures_return_independent_frames():
+    first = load_demo_prices("us", "SPY")
+    original = first.iloc[0]["close"]
+    first.iloc[0, first.columns.get_loc("close")] = -1
+
+    second = load_demo_prices("us", "SPY")
+    assert second.iloc[0]["close"] == original
+
+
 def test_research_split_and_robustness_outputs_are_complete():
     result = run_demo_research("cn", "600019.SS", "trend", 12)
 

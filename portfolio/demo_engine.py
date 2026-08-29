@@ -7,8 +7,10 @@ position change. The production market services keep their richer engines.
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -89,18 +91,36 @@ def evidence_diagnostics(result: DemoResult) -> dict[str, float | int | str]:
     }
 
 
-def load_demo_manifest() -> dict:
+@lru_cache(maxsize=4)
+def _load_demo_manifest_cached(modified_ns: int) -> dict:
+    del modified_ns
     return json.loads((DEMO_DATA_DIR / "manifest.json").read_text(encoding="utf-8"))
 
 
-def load_demo_prices(market_key: str, symbol: str) -> pd.DataFrame:
-    manifest = load_demo_manifest()
-    metadata = manifest["markets"][market_key]["symbols"][symbol]
-    frame = pd.read_csv(DEMO_DATA_DIR / metadata["file"], parse_dates=["date"])
+def load_demo_manifest() -> dict:
+    """Load versioned fixture metadata and return a mutation-safe copy."""
+    manifest_path = DEMO_DATA_DIR / "manifest.json"
+    cached = _load_demo_manifest_cached(manifest_path.stat().st_mtime_ns)
+    return copy.deepcopy(cached)
+
+
+@lru_cache(maxsize=24)
+def _load_demo_prices_cached(file_name: str, modified_ns: int) -> pd.DataFrame:
+    del modified_ns
+    frame = pd.read_csv(DEMO_DATA_DIR / file_name, parse_dates=["date"])
     frame = frame.set_index("date").sort_index()
     numeric = ["open", "high", "low", "close", "volume"]
     frame[numeric] = frame[numeric].apply(pd.to_numeric, errors="coerce")
     return frame.dropna(subset=numeric)
+
+
+def load_demo_prices(market_key: str, symbol: str) -> pd.DataFrame:
+    """Load a price snapshot with automatic invalidation when its file changes."""
+    manifest = load_demo_manifest()
+    metadata = manifest["markets"][market_key]["symbols"][symbol]
+    fixture_path = DEMO_DATA_DIR / metadata["file"]
+    cached = _load_demo_prices_cached(metadata["file"], fixture_path.stat().st_mtime_ns)
+    return cached.copy(deep=True)
 
 
 def _stateful_long(entry: pd.Series, exit_: pd.Series) -> pd.Series:
