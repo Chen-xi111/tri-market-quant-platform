@@ -8,6 +8,13 @@ import streamlit as st
 
 from portfolio.demo_engine import STRATEGIES, DemoResult, load_demo_manifest, run_demo_research
 
+STRATEGY_NOTES = {
+    "trend": "Own the instrument when its 40-day average is above the selected slow average.",
+    "mean_reversion": "Enter after a statistically unusual decline and exit when price returns to its mean.",
+    "breakout": "Enter on a volume-confirmed high and exit after a short-horizon price breakdown.",
+    "multi_factor": "Combine trend, momentum and lower volatility with fixed, visible weights.",
+}
+
 
 @st.cache_data(show_spinner=False, max_entries=48)
 def cached_demo_research(
@@ -136,35 +143,52 @@ def render_demo_dashboard(market_key: str) -> None:
         "It does not require a broker, API key or live quote service."
     )
 
-    with (
-        st.form(f"demo_controls_{market_key}", border=True),
-        st.container(horizontal=True, vertical_alignment="bottom"),
-    ):
-        symbol = st.selectbox(
-            "Instrument",
-            list(symbols),
-            index=0,
-            format_func=lambda value: f"{value} · {symbols[value]['name']}",
-            key=f"demo_symbol_{market_key}",
-        )
-        strategy_key = st.selectbox(
-            "Research rule",
-            list(STRATEGIES),
-            format_func=STRATEGIES.get,
-            key=f"demo_strategy_{market_key}",
-        )
-        cost_bps = st.selectbox(
-            "One-way cost",
-            [0, 5, 7, 10, 12, 15, 25, 40],
-            index=[0, 5, 7, 10, 12, 15, 25, 40].index(market["default_cost_bps"]),
-            format_func=lambda value: f"{value} bps",
-            key=f"demo_cost_{market_key}",
-        )
-        submitted = st.form_submit_button(
-            "Run analysis",
-            type="primary",
-            icon=":material/play_arrow:",
-        )
+    with st.container(border=True):
+        st.markdown("**1. Choose an instrument · 2. Choose a rule · 3. Run the analysis**")
+        with (
+            st.form(f"demo_controls_{market_key}", border=False),
+            st.container(horizontal=True, vertical_alignment="bottom"),
+        ):
+            symbol = st.selectbox(
+                "Instrument",
+                list(symbols),
+                index=0,
+                format_func=lambda value: f"{value} · {symbols[value]['name']}",
+                key=f"demo_symbol_{market_key}",
+            )
+            strategy_key = st.selectbox(
+                "Research rule",
+                list(STRATEGIES),
+                format_func=STRATEGIES.get,
+                key=f"demo_strategy_{market_key}",
+            )
+            submitted = st.form_submit_button(
+                "Run analysis",
+                type="primary",
+                icon=":material/play_arrow:",
+            )
+
+        st.caption(STRATEGY_NOTES[strategy_key])
+        with st.popover(
+            "Advanced assumptions",
+            icon=":material/tune:",
+        ):
+            st.caption("Changing an assumption updates the cached research result.")
+            default_cost = market["default_cost_bps"]
+            cost_options = [0, 5, 7, 10, 12, 15, 25, 40]
+            cost_bps = st.selectbox(
+                "One-way turnover cost",
+                cost_options,
+                index=cost_options.index(default_cost),
+                format_func=lambda value: f"{value} bps",
+                key=f"demo_cost_{market_key}",
+                help="Deducted every time the long-only position changes.",
+            )
+            st.markdown(
+                "- Chronological split: **70% train / 30% validation**\n"
+                "- Signal timing: **one-bar lag**\n"
+                "- Position: **long or cash**"
+            )
 
     if submitted:
         st.toast("Research view updated", icon=":material/check_circle:")
