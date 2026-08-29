@@ -9,6 +9,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.logo(":material/candlestick_chart:", size="large")
+
 page = st.navigation(
     {
         "": [
@@ -24,16 +26,19 @@ page = st.navigation(
                 "app_pages/cn_market.py",
                 title="China A-shares",
                 icon=":material/candlestick_chart:",
+                url_path="cn",
             ),
             st.Page(
                 "app_pages/hk_market.py",
                 title="Hong Kong equities",
                 icon=":material/candlestick_chart:",
+                url_path="hk",
             ),
             st.Page(
                 "app_pages/us_market.py",
                 title="US equities",
                 icon=":material/candlestick_chart:",
+                url_path="us",
             ),
         ],
         "Project": [
@@ -41,6 +46,7 @@ page = st.navigation(
                 "app_pages/methodology.py",
                 title="Research methodology",
                 icon=":material/science:",
+                url_path="methodology",
             )
         ],
     },
