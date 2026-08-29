@@ -60,6 +60,35 @@ class DemoResult:
     parameter_label: str
 
 
+def evidence_diagnostics(result: DemoResult) -> dict[str, float | int | str]:
+    """Summarize held-out evidence without turning it into a trading recommendation."""
+    train = result.metrics.loc["Train"]
+    validation = result.metrics.loc["Validation"]
+    alpha = float(validation["strategy_return"] - validation["benchmark_return"])
+    sharpe_decay = float(validation["sharpe"] - train["sharpe"])
+    stability = (
+        result.parameter_stability["validation_sharpe"]
+        .replace([float("inf"), float("-inf")], pd.NA)
+        .dropna()
+    )
+    positive_settings = int((stability > 0).sum())
+
+    if validation["sharpe"] > 0 and alpha > 0 and positive_settings >= 3:
+        classification = "Consistent in this snapshot"
+    elif validation["sharpe"] > 0 or alpha > 0 or positive_settings >= 3:
+        classification = "Mixed in this snapshot"
+    else:
+        classification = "Weak in this snapshot"
+
+    return {
+        "classification": classification,
+        "validation_alpha": alpha,
+        "sharpe_decay": sharpe_decay,
+        "positive_settings": positive_settings,
+        "tested_settings": len(stability),
+    }
+
+
 def load_demo_manifest() -> dict:
     return json.loads((DEMO_DATA_DIR / "manifest.json").read_text(encoding="utf-8"))
 

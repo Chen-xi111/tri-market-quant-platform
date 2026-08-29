@@ -5,6 +5,7 @@ import pytest
 
 from portfolio.demo_engine import (
     STRATEGIES,
+    evidence_diagnostics,
     load_demo_manifest,
     load_demo_prices,
     run_demo_research,
@@ -51,3 +52,17 @@ def test_research_split_and_robustness_outputs_are_complete():
     assert len(result.parameter_stability) == 5
     assert len(result.cost_sensitivity) == 6
     assert pd.notna(result.metrics.to_numpy()).all()
+
+
+def test_evidence_diagnostics_are_bounded_and_descriptive():
+    result = run_demo_research("us", "SPY", "trend", 10)
+    diagnostics = evidence_diagnostics(result)
+
+    assert diagnostics["classification"] in {
+        "Consistent in this snapshot",
+        "Mixed in this snapshot",
+        "Weak in this snapshot",
+    }
+    assert 0 <= diagnostics["positive_settings"] <= diagnostics["tested_settings"]
+    assert diagnostics["tested_settings"] == len(result.parameter_stability)
+    assert isinstance(diagnostics["validation_alpha"], float)

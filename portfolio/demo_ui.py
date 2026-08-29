@@ -6,7 +6,13 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from portfolio.demo_engine import STRATEGIES, DemoResult, load_demo_manifest, run_demo_research
+from portfolio.demo_engine import (
+    STRATEGIES,
+    DemoResult,
+    evidence_diagnostics,
+    load_demo_manifest,
+    run_demo_research,
+)
 
 STRATEGY_NOTES = {
     "trend": "Own the instrument when its 40-day average is above the selected slow average.",
@@ -82,6 +88,28 @@ def _drawdown_chart(result: DemoResult) -> alt.Chart:
     )
 
 
+def _cost_chart(frame: pd.DataFrame) -> alt.Chart:
+    line = (
+        alt.Chart(frame)
+        .mark_line(point=True, strokeWidth=2)
+        .encode(
+            x=alt.X("cost_bps:Q", title="One-way cost (bps)"),
+            y=alt.Y(
+                "validation_return:Q",
+                title="Validation return",
+                axis=alt.Axis(format="%"),
+            ),
+            tooltip=[
+                alt.Tooltip("cost_bps:Q", title="Cost", format=".0f"),
+                alt.Tooltip("validation_return:Q", title="Validation return", format=".2%"),
+                alt.Tooltip("validation_sharpe:Q", title="Validation Sharpe", format=".2f"),
+            ],
+        )
+    )
+    zero = alt.Chart(pd.DataFrame({"zero": [0]})).mark_rule(color="#94A3B8").encode(y="zero:Q")
+    return (line + zero).properties(height=300)
+
+
 def _robustness_chart(frame: pd.DataFrame, x: str, value_columns: list[str]) -> alt.Chart:
     long = frame.melt(id_vars=x, value_vars=value_columns, var_name="metric", value_name="value")
     labels = {
@@ -108,23 +136,34 @@ def _robustness_chart(frame: pd.DataFrame, x: str, value_columns: list[str]) -> 
 
 
 def _research_summary(result: DemoResult) -> str:
-    train = result.metrics.loc["Train"]
-    validation = result.metrics.loc["Validation"]
-    alpha = validation["strategy_return"] - validation["benchmark_return"]
+    diagnostics = evidence_diagnostics(result)
+    alpha = float(diagnostics["validation_alpha"])
     direction = "outperformed" if alpha > 0 else "underperformed"
-    decay = validation["sharpe"] - train["sharpe"]
-    stability = (
-        result.parameter_stability["validation_sharpe"]
-        .replace([float("inf"), float("-inf")], pd.NA)
-        .dropna()
-    )
-    positive_settings = int((stability > 0).sum())
     return (
         f"In the held-out period, the strategy {direction} buy and hold by "
-        f"{abs(alpha):.1%}. Validation Sharpe changed by {decay:+.2f} versus training, "
-        f"and {positive_settings} of {len(stability)} neighboring parameter settings "
+        f"{abs(alpha):.1%}. Validation Sharpe changed by "
+        f"{float(diagnostics['sharpe_decay']):+.2f} versus training, and "
+        f"{diagnostics['positive_settings']} of {diagnostics['tested_settings']} "
+        "neighboring parameter settings "
         "produced a positive validation Sharpe. This is descriptive evidence, not a live-trading claim."
     )
+
+
+def _period_comparison(result: DemoResult) -> pd.DataFrame:
+    comparison = result.metrics.reset_index().rename(columns={"period": "Period"})
+    comparison["alpha"] = comparison["strategy_return"] - comparison["benchmark_return"]
+    return comparison[
+        [
+            "Period",
+            "strategy_return",
+            "benchmark_return",
+            "alpha",
+            "sharpe",
+            "max_drawdown",
+            "trades",
+            "exposure",
+        ]
+    ]
 
 
 def render_demo_dashboard(market_key: str) -> None:
@@ -252,7 +291,32 @@ def render_demo_dashboard(market_key: str) -> None:
                 f"Returns include {cost_bps} bps on each position change."
             )
             st.altair_chart(_equity_chart(result))
-            st.markdown(f"**Research readout.** {_research_summary(result)}")
+            diagnostics = evidence_diagnostics(result)
+            message = f"**{diagnostics['classification']}.** {_research_summary(result)}"
+            if diagnostics["classification"] == "Consistent in this snapshot":
+                st.success(message, icon=":material/fact_check:")
+            else:
+                st.warning(message, icon=":material/experiment:")
+
+            st.markdown("**Train vs. validation scorecard**")
+            st.dataframe(
+                _period_comparison(result),
+                hide_index=True,
+                column_config={
+                    "strategy_return": st.column_config.NumberColumn(
+                        "Strategy return", format="percent"
+                    ),
+                    "benchmark_return": st.column_config.NumberColumn(
+                        "Benchmark return", format="percent"
+                    ),
+                    "alpha": st.column_config.NumberColumn("Excess return", format="percent"),
+                    "sharpe": st.column_config.NumberColumn("Sharpe", format="%.2f"),
+                    "max_drawdown": st.column_config.NumberColumn("Max drawdown", format="percent"),
+                    "trades": st.column_config.NumberColumn("Entries", format="%d"),
+                    "exposure": st.column_config.NumberColumn("Exposure", format="percent"),
+                },
+                key=f"period_comparison_{market_key}",
+            )
             with st.container(border=True):
                 st.markdown("**Drawdown path**")
                 st.altair_chart(_drawdown_chart(result))
@@ -263,13 +327,7 @@ def render_demo_dashboard(market_key: str) -> None:
             with left.container(border=True, height="stretch"):
                 st.markdown("**Transaction-cost sensitivity**")
                 st.caption("Held-out return after increasing one-way turnover costs.")
-                st.line_chart(
-                    result.cost_sensitivity,
-                    x="cost_bps",
-                    y="validation_return",
-                    x_label="Cost (bps)",
-                    y_label="Validation return",
-                )
+                st.altair_chart(_cost_chart(result.cost_sensitivity))
             with right.container(border=True, height="stretch"):
                 st.markdown("**Parameter stability**")
                 st.caption(result.parameter_label)
