@@ -21,6 +21,8 @@ st.markdown(
 st.subheader("Deliberate safety boundaries")
 st.markdown(
     """
+- Public mode exposes only the fixed, read-only research demo on port 8500.
+- Local live workspaces and their broker controls are not rendered in public mode.
 - The built-in paper broker is the default execution path.
 - The IBKR adapter accepts paper ports by default and rejects live ports at the safety boundary.
 - Futu OpenD is optional and is not started by the platform launcher.

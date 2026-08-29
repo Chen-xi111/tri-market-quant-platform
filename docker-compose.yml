@@ -3,9 +3,7 @@ services:
     build: .
     ports:
       - "8500:8500"
-      - "8501:8501"
-      - "8502:8502"
-      - "8503:8503"
     environment:
       QUANT_PUBLIC_HOST: localhost
+      QUANT_PUBLIC_MODE: "true"
     restart: unless-stopped

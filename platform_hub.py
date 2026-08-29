@@ -74,6 +74,12 @@ def _internal_host() -> str:
     return os.getenv("QUANT_INTERNAL_HOST", "127.0.0.1")
 
 
+def public_mode_enabled() -> bool:
+    """Default to a read-only portfolio unless local workspaces are explicitly enabled."""
+    value = os.getenv("QUANT_PUBLIC_MODE", "true").strip().lower()
+    return value not in {"0", "false", "no", "off"}
+
+
 def market_url(market: MarketApp) -> str:
     """Return a browser URL from trusted deployment configuration only."""
     host = os.getenv("QUANT_PUBLIC_HOST", "localhost")
@@ -100,6 +106,10 @@ def render_market_page(key: str) -> None:
 
     st.title(market.name)
     st.caption(market.focus)
+
+    if public_mode_enabled():
+        render_demo_dashboard(key)
+        return
 
     view = st.segmented_control(
         "Workspace mode",

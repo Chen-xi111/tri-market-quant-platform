@@ -150,6 +150,7 @@ def main() -> int:
             "QUANT_PUBLIC_SCHEME": "http",
         }
     )
+    environment.setdefault("QUANT_PUBLIC_MODE", "false")
 
     try:
         for service in SERVICES:
