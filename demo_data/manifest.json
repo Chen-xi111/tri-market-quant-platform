@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "description": "Fixed public-market snapshots for the portfolio demo. They are examples, not current quotes or investment advice.",
+  "markets": {
+    "cn": {
+      "label": "China A-shares",
+      "currency": "CNY",
+      "default_cost_bps": 12,
+      "symbols": {
+        "600519.SS": {
+          "name": "Kweichow Moutai",
+          "file": "cn_600519_ss.csv",
+          "rows": 640,
+          "start": "2024-01-08",
+          "end": "2026-08-28",
+          "source": "tencent",
+          "snapshot_saved_at": "2026-08-28T07:23:44.482767+00:00"
+        },
+        "300750.SZ": {
+          "name": "CATL",
+          "file": "cn_300750_sz.csv",
+          "rows": 640,
+          "start": "2024-01-08",
+          "end": "2026-08-28",
+          "source": "tencent",
+          "snapshot_saved_at": "2026-08-28T07:23:36.900018+00:00"
+        },
+        "600019.SS": {
+          "name": "Baoshan Iron & Steel",
+          "file": "cn_600019_ss.csv",
+          "rows": 640,
+          "start": "2024-01-08",
+          "end": "2026-08-28",
+          "source": "tencent",
+          "snapshot_saved_at": "2026-08-28T07:23:44.482921+00:00"
+        }
+      }
+    },
+    "hk": {
+      "label": "Hong Kong equities",
+      "currency": "HKD",
+      "default_cost_bps": 15,
+      "symbols": {
+        "0700.HK": {
+          "name": "Tencent",
+          "file": "hk_0700_hk.csv",
+          "rows": 640,
+          "start": "2024-01-19",
+          "end": "2026-08-28",
+          "source": "tencent",
+          "snapshot_saved_at": "2026-08-28T15:09:29.355692+00:00"
+        },
+        "9988.HK": {
+          "name": "Alibaba",
+          "file": "hk_9988_hk.csv",
+          "rows": 640,
+          "start": "2024-01-19",
+          "end": "2026-08-28",
+          "source": "tencent",
+          "snapshot_saved_at": "2026-08-28T15:09:34.154743+00:00"
+        },
+        "2318.HK": {
+          "name": "Ping An",
+          "file": "hk_2318_hk.csv",
+          "rows": 640,
+          "start": "2024-01-19",
+          "end": "2026-08-28",
+          "source": "tencent",
+          "snapshot_saved_at": "2026-08-28T15:09:34.154708+00:00"
+        }
+      }
+    },
+    "us": {
+      "label": "US equities",
+      "currency": "USD",
+      "default_cost_bps": 7,
+      "symbols": {
+        "SPY": {
+          "name": "SPDR S&P 500 ETF",
+          "file": "us_spy.csv",
+          "rows": 385,
+          "start": "2025-02-18",
+          "end": "2026-08-28",
+          "source": "yfinance",
+          "snapshot_saved_at": "2026-08-28T15:09:06.933592+00:00"
+        },
+        "AAPL": {
+          "name": "Apple",
+          "file": "us_aapl.csv",
+          "rows": 385,
+          "start": "2025-02-18",
+          "end": "2026-08-28",
+          "source": "yfinance",
+          "snapshot_saved_at": "2026-08-28T15:08:53.620764+00:00"
+        },
+        "NVDA": {
+          "name": "NVIDIA",
+          "file": "us_nvda.csv",
+          "rows": 385,
+          "start": "2025-02-18",
+          "end": "2026-08-28",
+          "source": "yfinance",
+          "snapshot_saved_at": "2026-08-28T15:08:50.820557+00:00"
+        }
+      }
+    }
+  }
+}

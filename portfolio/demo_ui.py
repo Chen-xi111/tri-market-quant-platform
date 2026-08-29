@@ -1,0 +1,312 @@
+"""Native Streamlit UI for the public, single-process research demo."""
+
+from __future__ import annotations
+
+import altair as alt
+import pandas as pd
+import streamlit as st
+
+from portfolio.demo_engine import STRATEGIES, DemoResult, load_demo_manifest, run_demo_research
+
+
+@st.cache_data(show_spinner=False, max_entries=48)
+def cached_demo_research(
+    market_key: str,
+    symbol: str,
+    strategy_key: str,
+    cost_bps: float,
+) -> DemoResult:
+    return run_demo_research(market_key, symbol, strategy_key, cost_bps)
+
+
+def _percent(value: float) -> str:
+    return f"{value:+.1%}"
+
+
+def _equity_chart(result: DemoResult) -> alt.Chart:
+    history = result.history.reset_index()
+    chart_data = history.melt(
+        id_vars="date",
+        value_vars=["strategy_equity", "benchmark_equity"],
+        var_name="series",
+        value_name="growth",
+    )
+    labels = {
+        "strategy_equity": "Strategy after costs",
+        "benchmark_equity": "Buy and hold",
+    }
+    chart_data["series"] = chart_data["series"].map(labels)
+    lines = (
+        alt.Chart(chart_data)
+        .mark_line(strokeWidth=2)
+        .encode(
+            x=alt.X("date:T", title=None),
+            y=alt.Y("growth:Q", title="Growth of 1.0", scale=alt.Scale(zero=False)),
+            color=alt.Color("series:N", title=None),
+            tooltip=[
+                alt.Tooltip("date:T", title="Date"),
+                alt.Tooltip("series:N", title="Series"),
+                alt.Tooltip("growth:Q", title="Growth", format=".3f"),
+            ],
+        )
+    )
+    split = (
+        alt.Chart(pd.DataFrame({"date": [result.split_date]}))
+        .mark_rule(strokeDash=[5, 5], color="#6B7280")
+        .encode(x="date:T")
+    )
+    return (lines + split).properties(height=360)
+
+
+def _drawdown_chart(result: DemoResult) -> alt.Chart:
+    data = result.history.reset_index()
+    return (
+        alt.Chart(data)
+        .mark_area(opacity=0.4)
+        .encode(
+            x=alt.X("date:T", title=None),
+            y=alt.Y("drawdown:Q", title="Drawdown", axis=alt.Axis(format="%")),
+            tooltip=[
+                alt.Tooltip("date:T", title="Date"),
+                alt.Tooltip("drawdown:Q", title="Drawdown", format=".2%"),
+            ],
+        )
+        .properties(height=220)
+    )
+
+
+def _robustness_chart(frame: pd.DataFrame, x: str, value_columns: list[str]) -> alt.Chart:
+    long = frame.melt(id_vars=x, value_vars=value_columns, var_name="metric", value_name="value")
+    labels = {
+        "train_sharpe": "Train Sharpe",
+        "validation_sharpe": "Validation Sharpe",
+        "validation_return": "Validation return",
+    }
+    long["metric"] = long["metric"].map(labels).fillna(long["metric"])
+    return (
+        alt.Chart(long)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X(f"{x}:Q", title=x.replace("_", " ").capitalize()),
+            y=alt.Y("value:Q", title=None),
+            color=alt.Color("metric:N", title=None),
+            tooltip=[
+                alt.Tooltip(f"{x}:Q", title=x.replace("_", " ").capitalize()),
+                alt.Tooltip("metric:N", title="Metric"),
+                alt.Tooltip("value:Q", title="Value", format=".3f"),
+            ],
+        )
+        .properties(height=300)
+    )
+
+
+def _research_summary(result: DemoResult) -> str:
+    train = result.metrics.loc["Train"]
+    validation = result.metrics.loc["Validation"]
+    alpha = validation["strategy_return"] - validation["benchmark_return"]
+    direction = "outperformed" if alpha > 0 else "underperformed"
+    decay = validation["sharpe"] - train["sharpe"]
+    stability = (
+        result.parameter_stability["validation_sharpe"]
+        .replace([float("inf"), float("-inf")], pd.NA)
+        .dropna()
+    )
+    positive_settings = int((stability > 0).sum())
+    return (
+        f"In the held-out period, the strategy {direction} buy and hold by "
+        f"{abs(alpha):.1%}. Validation Sharpe changed by {decay:+.2f} versus training, "
+        f"and {positive_settings} of {len(stability)} neighboring parameter settings "
+        "produced a positive validation Sharpe. This is descriptive evidence, not a live-trading claim."
+    )
+
+
+def render_demo_dashboard(market_key: str) -> None:
+    manifest = load_demo_manifest()
+    market = manifest["markets"][market_key]
+    symbols = market["symbols"]
+
+    first_symbol = next(iter(symbols))
+    with st.container(horizontal=True, vertical_alignment="center"):
+        st.badge("Interactive demo", color="blue", icon=":material/science:")
+        st.badge("Fixed snapshot", color="gray", icon=":material/history:")
+        st.badge("Live orders disabled", color="green", icon=":material/lock:")
+
+    st.caption(
+        "This public demo runs entirely from versioned market snapshots. "
+        "It does not require a broker, API key or live quote service."
+    )
+
+    with (
+        st.form(f"demo_controls_{market_key}", border=True),
+        st.container(horizontal=True, vertical_alignment="bottom"),
+    ):
+        symbol = st.selectbox(
+            "Instrument",
+            list(symbols),
+            index=0,
+            format_func=lambda value: f"{value} · {symbols[value]['name']}",
+            key=f"demo_symbol_{market_key}",
+        )
+        strategy_key = st.selectbox(
+            "Research rule",
+            list(STRATEGIES),
+            format_func=STRATEGIES.get,
+            key=f"demo_strategy_{market_key}",
+        )
+        cost_bps = st.selectbox(
+            "One-way cost",
+            [0, 5, 7, 10, 12, 15, 25, 40],
+            index=[0, 5, 7, 10, 12, 15, 25, 40].index(market["default_cost_bps"]),
+            format_func=lambda value: f"{value} bps",
+            key=f"demo_cost_{market_key}",
+        )
+        submitted = st.form_submit_button(
+            "Run analysis",
+            type="primary",
+            icon=":material/play_arrow:",
+        )
+
+    if submitted:
+        st.toast("Research view updated", icon=":material/check_circle:")
+
+    metadata = symbols.get(symbol, symbols[first_symbol])
+    result_slot = st.container()
+    with result_slot.skeleton(height=420):
+        result = cached_demo_research(market_key, symbol, strategy_key, float(cost_bps))
+
+    validation = result.metrics.loc["Validation"]
+    train = result.metrics.loc["Train"]
+    validation_history = result.history.loc[result.split_date :]
+    sparkline = validation_history["strategy_equity"].tail(80).tolist()
+
+    with st.container(horizontal=True):
+        st.metric(
+            "Validation return",
+            _percent(validation["strategy_return"]),
+            delta=_percent(validation["strategy_return"] - validation["benchmark_return"]),
+            delta_description="vs. buy and hold",
+            border=True,
+            chart_data=sparkline,
+            icon=":material/trending_up:",
+        )
+        st.metric(
+            "Validation Sharpe",
+            f"{validation['sharpe']:.2f}",
+            delta=f"{validation['sharpe'] - train['sharpe']:+.2f}",
+            delta_description="vs. train",
+            border=True,
+            icon=":material/query_stats:",
+        )
+        st.metric(
+            "Maximum drawdown",
+            _percent(validation["max_drawdown"]),
+            delta_color="inverse",
+            border=True,
+            icon=":material/area_chart:",
+        )
+        st.metric(
+            "Completed entries",
+            int(validation["trades"]),
+            delta=f"{validation['exposure']:.0%} exposure",
+            delta_color="off",
+            delta_arrow="off",
+            border=True,
+            icon=":material/swap_horiz:",
+        )
+
+    overview, robustness, evidence = st.tabs(
+        ["Overview", "Robustness", "Data and assumptions"],
+        key=f"demo_tabs_{market_key}",
+        on_change="rerun",
+    )
+
+    if overview.open:
+        with overview:
+            st.subheader("Time-ordered validation")
+            st.caption(
+                f"The dashed line marks the held-out period beginning {result.split_date.date()}. "
+                f"Returns include {cost_bps} bps on each position change."
+            )
+            st.altair_chart(_equity_chart(result))
+            st.markdown(f"**Research readout.** {_research_summary(result)}")
+            with st.container(border=True):
+                st.markdown("**Drawdown path**")
+                st.altair_chart(_drawdown_chart(result))
+
+    if robustness.open:
+        with robustness:
+            left, right = st.columns(2)
+            with left.container(border=True, height="stretch"):
+                st.markdown("**Transaction-cost sensitivity**")
+                st.caption("Held-out return after increasing one-way turnover costs.")
+                st.line_chart(
+                    result.cost_sensitivity,
+                    x="cost_bps",
+                    y="validation_return",
+                    x_label="Cost (bps)",
+                    y_label="Validation return",
+                )
+            with right.container(border=True, height="stretch"):
+                st.markdown("**Parameter stability**")
+                st.caption(result.parameter_label)
+                st.altair_chart(
+                    _robustness_chart(
+                        result.parameter_stability,
+                        "parameter",
+                        ["train_sharpe", "validation_sharpe"],
+                    )
+                )
+            st.dataframe(
+                result.parameter_stability,
+                hide_index=True,
+                column_config={
+                    "parameter": st.column_config.NumberColumn(result.parameter_label),
+                    "train_sharpe": st.column_config.NumberColumn("Train Sharpe", format="%.2f"),
+                    "validation_sharpe": st.column_config.NumberColumn(
+                        "Validation Sharpe", format="%.2f"
+                    ),
+                    "validation_return": st.column_config.NumberColumn(
+                        "Validation return", format="percent"
+                    ),
+                },
+                key=f"parameter_table_{market_key}",
+            )
+
+    if evidence.open:
+        with evidence:
+            st.markdown(
+                f"""
+**Snapshot provenance**
+
+- Instrument: `{symbol}` — {metadata["name"]}
+- Source adapter: `{metadata["source"]}`
+- Observations: {metadata["rows"]} daily bars
+- Coverage: {metadata["start"]} to {metadata["end"]}
+- Snapshot saved: `{metadata["snapshot_saved_at"]}`
+
+**Execution assumptions**
+
+- The rule is long-only and evaluated on daily bars.
+- Signals are shifted by one bar before earning returns.
+- A cost of {cost_bps} bps is charged on each position change.
+- The split is chronological; no random train/test shuffle is used.
+- Public-provider snapshots are not survivorship-free institutional data.
+"""
+            )
+            st.dataframe(
+                result.history.tail(120).reset_index()[
+                    ["date", "close", "position", "turnover", "strategy_return", "drawdown"]
+                ],
+                hide_index=True,
+                column_config={
+                    "date": st.column_config.DateColumn("Date", format="YYYY-MM-DD"),
+                    "close": st.column_config.NumberColumn("Close", format="%.2f"),
+                    "position": st.column_config.NumberColumn("Position", format="%.0f"),
+                    "turnover": st.column_config.NumberColumn("Turnover", format="%.0f"),
+                    "strategy_return": st.column_config.NumberColumn(
+                        "Strategy return", format="percent"
+                    ),
+                    "drawdown": st.column_config.NumberColumn("Drawdown", format="percent"),
+                },
+                key=f"evidence_table_{market_key}",
+            )

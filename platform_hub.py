@@ -10,6 +10,8 @@ from urllib.request import urlopen
 
 import streamlit as st
 
+from portfolio.demo_ui import render_demo_dashboard
+
 
 @dataclass(frozen=True)
 class MarketApp:
@@ -95,10 +97,25 @@ def service_is_healthy(port: int) -> bool:
 
 def render_market_page(key: str) -> None:
     market = MARKETS[key]
-    healthy = service_is_healthy(market.port)
 
     st.title(market.name)
     st.caption(market.focus)
+
+    view = st.segmented_control(
+        "Workspace mode",
+        ["Interactive demo", "Local live workspace"],
+        default="Interactive demo",
+        required=True,
+        key=f"workspace_mode_{key}",
+        width="stretch",
+        persist_state="session",
+    )
+
+    if view == "Interactive demo":
+        render_demo_dashboard(key)
+        return
+
+    healthy = service_is_healthy(market.port)
 
     with st.container(horizontal=True, vertical_alignment="center"):
         st.badge(
