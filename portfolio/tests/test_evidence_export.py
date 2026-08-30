@@ -3,7 +3,12 @@ from __future__ import annotations
 import json
 
 from portfolio.demo_engine import load_demo_manifest, run_demo_research
-from portfolio.evidence_export import evidence_json, export_stem, history_csv
+from portfolio.evidence_export import (
+    comparison_export_stem,
+    evidence_json,
+    export_stem,
+    history_csv,
+)
 
 
 def test_evidence_exports_are_deterministic_and_complete():
@@ -21,4 +26,9 @@ def test_evidence_exports_are_deterministic_and_complete():
     assert len(payload["metrics"]) == 2
     assert len(payload["parameter_stability"]) == 5
     assert len(csv_lines) == len(result.history) + 1
-    assert export_stem(result) == "us_spy_trend"
+    assert b"NaN" not in first and b"Infinity" not in first
+    assert export_stem(result) == "us_spy_trend_7bps"
+    assert (
+        comparison_export_stem("trend", "common", 25, ["cn", "us"])
+        == "cross_market_trend_common-25bps_cn-us"
+    )

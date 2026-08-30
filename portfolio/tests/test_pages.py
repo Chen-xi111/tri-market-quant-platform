@@ -44,6 +44,7 @@ def test_public_demo_controls_and_lazy_evidence_tabs(monkeypatch, page, market_k
     app.run()
     assert not app.exception
     assert len(app.metric) == 4
+    assert app.session_state[f"demo_cost_{market_key}"] == 25
 
     app.session_state[f"demo_tabs_{market_key}"] = "Robustness"
     app.run()

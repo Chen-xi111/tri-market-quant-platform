@@ -173,6 +173,8 @@ def render_demo_dashboard(market_key: str) -> None:
     symbols = market["symbols"]
 
     first_symbol = next(iter(symbols))
+    default_cost = market["default_cost_bps"]
+    cost_options = [0, 5, 7, 10, 12, 15, 25, 40]
     with st.container(horizontal=True, vertical_alignment="center"):
         st.badge("Interactive demo", color="blue", icon=":material/science:")
         st.badge("Fixed snapshot", color="gray", icon=":material/history:")
@@ -184,7 +186,9 @@ def render_demo_dashboard(market_key: str) -> None:
     )
 
     with st.container(border=True):
-        st.markdown("**1. Choose an instrument · 2. Choose a rule · 3. Run the analysis**")
+        st.markdown(
+            "**1. Choose an instrument · 2. Choose a rule · 3. Set costs · 4. Run the analysis**"
+        )
         with (
             st.form(f"demo_controls_{market_key}", border=False),
             st.container(horizontal=True, vertical_alignment="bottom"),
@@ -195,12 +199,26 @@ def render_demo_dashboard(market_key: str) -> None:
                 index=0,
                 format_func=lambda value: f"{value} · {symbols[value]['name']}",
                 key=f"demo_symbol_{market_key}",
+                persist_state="session",
+                width=300,
             )
             strategy_key = st.selectbox(
                 "Research rule",
                 list(STRATEGIES),
                 format_func=STRATEGIES.get,
                 key=f"demo_strategy_{market_key}",
+                persist_state="session",
+                width=260,
+            )
+            cost_bps = st.selectbox(
+                "One-way turnover cost",
+                cost_options,
+                index=cost_options.index(default_cost),
+                format_func=lambda value: f"{value} bps",
+                key=f"demo_cost_{market_key}",
+                persist_state="session",
+                help="Deducted every time the long-only position changes.",
+                width=200,
             )
             submitted = st.form_submit_button(
                 "Run analysis",
@@ -210,24 +228,14 @@ def render_demo_dashboard(market_key: str) -> None:
 
         st.caption(STRATEGY_NOTES[strategy_key])
         with st.popover(
-            "Advanced assumptions",
-            icon=":material/tune:",
+            "Research contract",
+            icon=":material/fact_check:",
         ):
-            st.caption("Changing an assumption updates the cached research result.")
-            default_cost = market["default_cost_bps"]
-            cost_options = [0, 5, 7, 10, 12, 15, 25, 40]
-            cost_bps = st.selectbox(
-                "One-way turnover cost",
-                cost_options,
-                index=cost_options.index(default_cost),
-                format_func=lambda value: f"{value} bps",
-                key=f"demo_cost_{market_key}",
-                help="Deducted every time the long-only position changes.",
-            )
             st.markdown(
                 "- Chronological split: **70% train / 30% validation**\n"
                 "- Signal timing: **one-bar lag**\n"
-                "- Position: **long or cash**"
+                "- Position: **long or cash**\n"
+                f"- Submitted one-way cost: **{cost_bps} bps**"
             )
 
     if submitted:

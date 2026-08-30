@@ -2,6 +2,21 @@
 
 All notable public-facing changes are documented here.
 
+## 0.3.1 — 2026-08-30
+
+### Fixed
+
+- Single-market turnover cost is now a visible, submitted research input instead of a stateful control hidden inside a popover.
+- Instrument, rule and cost selections persist when navigating between portfolio pages.
+- Download file names now include the submitted cost and, for comparison scorecards, the selected market universe.
+- Evidence JSON serialization rejects non-standard `NaN` and `Infinity` values.
+
+### Verified
+
+- Desktop and 390-pixel mobile layouts complete without horizontal overflow.
+- Public and full four-process modes render successfully, including all three embedded local workspaces.
+- Extreme 0/40 bps strategy grids and all public evidence bundles remain finite and machine-readable.
+
 ## 0.3.0 — 2026-08-30
 
 ### Added

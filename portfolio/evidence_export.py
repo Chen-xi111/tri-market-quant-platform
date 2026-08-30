@@ -42,7 +42,7 @@ def evidence_json(result: DemoResult, metadata: dict) -> bytes:
             "not investment advice or a live-trading authorization."
         ),
     }
-    return (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    return (json.dumps(payload, allow_nan=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
 def history_csv(result: DemoResult) -> bytes:
@@ -52,4 +52,26 @@ def history_csv(result: DemoResult) -> bytes:
 
 def export_stem(result: DemoResult) -> str:
     symbol = result.symbol.replace(".", "_").lower()
-    return f"{result.market_key}_{symbol}_{result.strategy_key}"
+    cost = f"{result.cost_bps:g}".replace(".", "p")
+    return f"{result.market_key}_{symbol}_{result.strategy_key}_{cost}bps"
+
+
+def comparison_export_stem(
+    strategy_key: str,
+    cost_basis: str,
+    common_cost_bps: float,
+    market_keys: list[str],
+) -> str:
+    """Build an auditable file stem for a filtered cross-market scorecard."""
+    if cost_basis not in {"venue", "common"}:
+        raise ValueError("cost_basis must be 'venue' or 'common'")
+    if not market_keys:
+        raise ValueError("market_keys must not be empty")
+
+    if cost_basis == "venue":
+        cost = "venue-defaults"
+    else:
+        cost_value = f"{common_cost_bps:g}".replace(".", "p")
+        cost = f"common-{cost_value}bps"
+    markets = "-".join(market_keys)
+    return f"cross_market_{strategy_key}_{cost}_{markets}"

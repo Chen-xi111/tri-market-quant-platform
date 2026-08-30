@@ -8,6 +8,7 @@ import streamlit as st
 
 from portfolio.comparison_engine import MARKET_ORDER, build_cross_market_comparison
 from portfolio.demo_engine import STRATEGIES
+from portfolio.evidence_export import comparison_export_stem
 
 MARKET_LABELS = {
     "cn": "China A-shares",
@@ -315,7 +316,9 @@ if scorecard_tab.open:
         st.download_button(
             "Download scorecard CSV",
             data=scorecard.to_csv(index=False).encode("utf-8"),
-            file_name=f"cross_market_{strategy_key}_{cost_basis}.csv",
+            file_name=(
+                f"{comparison_export_stem(strategy_key, cost_basis, float(common_cost), selected_markets)}.csv"
+            ),
             mime="text/csv",
             icon=":material/download:",
             on_click="ignore",
