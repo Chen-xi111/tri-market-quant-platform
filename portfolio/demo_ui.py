@@ -13,6 +13,7 @@ from portfolio.demo_engine import (
     load_demo_manifest,
     run_demo_research,
 )
+from portfolio.evidence_export import evidence_json, export_stem, history_csv
 
 STRATEGY_NOTES = {
     "trend": "Own the instrument when its 40-day average is above the selected slow average.",
@@ -376,6 +377,24 @@ def render_demo_dashboard(market_key: str) -> None:
 - Public-provider snapshots are not survivorship-free institutional data.
 """
             )
+            export_name = export_stem(result)
+            with st.container(horizontal=True):
+                st.download_button(
+                    "Download return path CSV",
+                    data=history_csv(result),
+                    file_name=f"{export_name}_returns.csv",
+                    mime="text/csv",
+                    icon=":material/download:",
+                    on_click="ignore",
+                )
+                st.download_button(
+                    "Download evidence JSON",
+                    data=evidence_json(result, metadata),
+                    file_name=f"{export_name}_evidence.json",
+                    mime="application/json",
+                    icon=":material/data_object:",
+                    on_click="ignore",
+                )
             st.dataframe(
                 result.history.tail(120).reset_index()[
                     ["date", "close", "position", "turnover", "strategy_return", "drawdown"]

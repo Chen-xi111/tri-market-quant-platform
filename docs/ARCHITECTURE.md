@@ -7,11 +7,14 @@ Browser
   |
   +-- :8500 Streamlit portal (one process)
         |-- project overview and methodology
+        |-- cross-market comparison lab
         |-- China / Hong Kong / US demo pages
-        +-- versioned fixtures -> demo engine -> evidence views
+        +-- versioned fixtures -> shared demo engine -> comparison and evidence views
 ```
 
 `QUANT_PUBLIC_MODE=true` makes `scripts/run_all.py` start only the portal. The portal reads repository fixtures, never renders child-service iframes and contains no path to broker controls. Docker uses this mode and exposes only port 8500.
+
+The comparison layer sends the same strategy definition through the shared engine for each selected snapshot. It aligns the resulting metric schema for visual comparison but retains each instrument's native currency, calendar, costs and fixture provenance. The output is a research scorecard, not a pooled portfolio backtest.
 
 ## Full local topology
 

@@ -21,12 +21,12 @@ st.write(
 
 with st.container(horizontal=True):
     if st.button(
-        "Try the US research demo",
+        "Open the cross-market lab",
         type="primary",
-        icon=":material/play_arrow:",
+        icon=":material/compare_arrows:",
         width="stretch",
     ):
-        st.switch_page("app_pages/us_market.py")
+        st.switch_page("app_pages/comparison.py")
     if st.button(
         "Inspect the methodology",
         icon=":material/science:",
@@ -55,7 +55,7 @@ with st.container(horizontal=True):
     )
     st.metric(
         "Automated tests",
-        160,
+        165,
         delta="Plus 19 subtests",
         delta_color="off",
         delta_arrow="off",
@@ -72,7 +72,24 @@ with st.container(horizontal=True):
         icon=":material/lock:",
     )
 
-st.subheader("Choose a market")
+st.subheader("Featured research view")
+with st.container(border=True):
+    with st.container(horizontal=True, vertical_alignment="center"):
+        st.badge("Signature view", color="blue", icon=":material/compare_arrows:")
+        st.badge("Same rule across venues", color="gray", icon=":material/functions:")
+    st.subheader("One rule · nine snapshots · three venues")
+    st.write(
+        "Compare held-out evidence across every public instrument without pooling currencies, "
+        "calendars or unequal histories into a misleading portfolio return."
+    )
+    if st.button(
+        "Compare all snapshots",
+        key="featured_comparison",
+        icon=":material/arrow_forward:",
+    ):
+        st.switch_page("app_pages/comparison.py")
+
+st.subheader("Inspect a single market")
 st.caption(
     "Every workspace opens with a fixed, broker-free research demo. Local live services are optional."
 )

@@ -27,6 +27,14 @@ The current UI presents a transparent heuristic gate based on minimum trade coun
 
 The project uses public APIs with a fallback chain. Providers can differ in adjustment conventions, timestamp semantics, update latency and symbol coverage. The UI surfaces provider failures and quote ages, but the repository does not claim point-in-time survivorship-free institutional coverage.
 
+## Cross-market comparisons
+
+- Every selected instrument receives the same strategy definition and chronological split.
+- Venue-default costs preserve local assumptions; common-cost mode supports a controlled sensitivity comparison.
+- Returns, Sharpe and drawdown remain instrument-level evidence. Different currencies and calendars are never added together into a portfolio result.
+- Market filters change the displayed research universe, not the rule or historical observations.
+- The nine fixed snapshots are illustrative and do not represent a survivorship-free investable universe.
+
 ## Interpretation
 
 A useful result answers a bounded research question and remains directionally stable under time splits and reasonable cost assumptions. A negative or degraded out-of-sample result is valid evidence when it is reported honestly.

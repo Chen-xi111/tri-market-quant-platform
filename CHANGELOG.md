@@ -2,6 +2,20 @@
 
 All notable public-facing changes are documented here.
 
+## 0.3.0 — 2026-08-30
+
+### Added
+
+- Cross-market comparison lab for applying one transparent rule to all nine versioned instruments.
+- Risk-return, excess-return and train/validation transfer views with market and cost filters.
+- Downloadable comparison scorecards plus deterministic per-instrument CSV and JSON evidence bundles.
+
+### Changed
+
+- The landing page now leads with a signature cross-market research workflow before market-level drill-down.
+- Responsive controls, compact mobile legends and lazy result tabs improve small-screen use and rendering cost.
+- Comparison language now explicitly keeps currencies, calendars and instrument evidence separate instead of presenting a pooled portfolio return.
+
 ## 0.2.0 — 2026-08-30
 
 ### Added

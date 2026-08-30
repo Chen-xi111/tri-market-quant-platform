@@ -9,6 +9,7 @@ An inspectable equity-research system for China A-shares, Hong Kong equities and
 | Area | Evidence in the repository |
 |---|---|
 | Quant research | Explainable signals, one-bar lag, chronological 70/30 holdout and train/validation comparison |
+| Cross-market research | The same rule across nine snapshots, venue/default cost comparison and instrument-level scorecards without pooled-return claims |
 | Robustness | Transaction-cost sensitivity, drawdown paths and parameter-neighborhood stability |
 | Market engineering | Symbol normalization, quote freshness, provider fallbacks and venue-specific fee/lot rules |
 | Production judgment | Bounded caches, process isolation, health checks, CI and deterministic demo fixtures |
@@ -18,11 +19,11 @@ The full local services contain seven strategy families. The compact public demo
 
 ## 30-second demo path
 
-1. Open a market and choose one of three versioned instruments.
-2. Choose a research rule and run the analysis.
-3. Read the held-out return, Sharpe degradation, drawdown and train/validation scorecard.
-4. Open **Robustness** to test higher costs and neighboring parameters.
-5. Open **Data and assumptions** to inspect provenance, signal lag and recent observations.
+1. Open **Cross-market lab** and apply one research rule to all nine versioned instruments.
+2. Change the cost basis or market filter and inspect how the evidence changes without pooling currencies or calendars.
+3. Read the risk-return map, excess-return ranking and train/validation transfer view.
+4. Open **Scorecard** to compare the complete instrument-level table or download it as CSV.
+5. Drill into one market, then open **Data and assumptions** to inspect provenance and download its deterministic return-path CSV and JSON evidence bundle.
 
 The interface does not select the most flattering run or promise profitability. It labels evidence as consistent, mixed or weak within the chosen snapshot.
 
@@ -31,10 +32,12 @@ The interface does not select the most flattering run or promise profitability. 
 ```mermaid
 flowchart LR
     Browser -->|:8500| Portal[Streamlit portfolio portal]
+    Portal --> Compare[Cross-market lab]
     Portal --> CN[China demo]
     Portal --> HK[Hong Kong demo]
     Portal --> US[US demo]
     Fixtures[Versioned OHLCV snapshots] --> Engine[Transparent research engine]
+    Engine --> Compare
     Engine --> CN
     Engine --> HK
     Engine --> US
@@ -99,7 +102,7 @@ Release history is tracked in [CHANGELOG.md](CHANGELOG.md). Before publishing, u
 ./test_all.sh
 ```
 
-The current suite contains **160 standard tests plus 19 generated subtests** across the public portfolio and three isolated market services. It covers accounting realism, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs the portfolio checks and each market suite independently.
+The current suite contains **165 standard tests plus 19 generated subtests** across the public portfolio and three isolated market services. It covers accounting realism, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs the portfolio checks and each market suite independently.
 
 ## Docker
 
@@ -114,7 +117,7 @@ Docker starts the read-only public portfolio and exposes only port 8500. The thr
 ```text
 .
 ├── streamlit_app.py          # single-entry portfolio portal
-├── app_pages/                # overview, market demos and methodology
+├── app_pages/                # overview, cross-market lab, market demos and methodology
 ├── portfolio/                # deterministic demo engine, UI and tests
 ├── demo_data/                # compact versioned public snapshots
 ├── systems/

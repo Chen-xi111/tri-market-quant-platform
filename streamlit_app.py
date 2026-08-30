@@ -41,6 +41,14 @@ page = st.navigation(
                 url_path="us",
             ),
         ],
+        "Research": [
+            st.Page(
+                "app_pages/comparison.py",
+                title="Cross-market lab",
+                icon=":material/compare_arrows:",
+                url_path="compare",
+            )
+        ],
         "Project": [
             st.Page(
                 "app_pages/methodology.py",
