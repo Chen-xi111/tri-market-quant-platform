@@ -91,7 +91,7 @@ The detailed evidence contract is in [docs/VALIDATION.md](docs/VALIDATION.md).
 ./test_all.sh
 ```
 
-The current suite contains **157 standard tests plus 19 generated subtests** across the public portfolio and three isolated market services. It covers accounting realism, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs the portfolio checks and each market suite independently.
+The current suite contains **160 standard tests plus 19 generated subtests** across the public portfolio and three isolated market services. It covers accounting realism, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs the portfolio checks and each market suite independently.
 
 ## Docker
 

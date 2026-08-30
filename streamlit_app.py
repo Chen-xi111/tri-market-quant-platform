@@ -6,7 +6,7 @@ st.set_page_config(
     page_title="Tri-market quant platform",
     page_icon=":material/finance_mode:",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 st.logo(":material/candlestick_chart:", size="large")
