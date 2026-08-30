@@ -365,6 +365,7 @@ def render_demo_dashboard(market_key: str) -> None:
 - Observations: {metadata["rows"]} daily bars
 - Coverage: {metadata["start"]} to {metadata["end"]}
 - Snapshot saved: `{metadata["snapshot_saved_at"]}`
+- Fixture SHA-256: `{metadata["sha256"][:12]}…` (verified at load)
 
 **Execution assumptions**
 

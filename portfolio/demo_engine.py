@@ -8,6 +8,7 @@ position change. The production market services keep their richer engines.
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from dataclasses import dataclass
 from functools import lru_cache
@@ -105,9 +106,17 @@ def load_demo_manifest() -> dict:
 
 
 @lru_cache(maxsize=24)
-def _load_demo_prices_cached(file_name: str, modified_ns: int) -> pd.DataFrame:
+def _load_demo_prices_cached(
+    file_name: str,
+    modified_ns: int,
+    expected_sha256: str,
+) -> pd.DataFrame:
     del modified_ns
-    frame = pd.read_csv(DEMO_DATA_DIR / file_name, parse_dates=["date"])
+    fixture_path = DEMO_DATA_DIR / file_name
+    actual_sha256 = hashlib.sha256(fixture_path.read_bytes()).hexdigest()
+    if actual_sha256 != expected_sha256:
+        raise ValueError(f"Fixture integrity check failed: {file_name}")
+    frame = pd.read_csv(fixture_path, parse_dates=["date"])
     frame = frame.set_index("date").sort_index()
     numeric = ["open", "high", "low", "close", "volume"]
     frame[numeric] = frame[numeric].apply(pd.to_numeric, errors="coerce")
@@ -119,7 +128,11 @@ def load_demo_prices(market_key: str, symbol: str) -> pd.DataFrame:
     manifest = load_demo_manifest()
     metadata = manifest["markets"][market_key]["symbols"][symbol]
     fixture_path = DEMO_DATA_DIR / metadata["file"]
-    cached = _load_demo_prices_cached(metadata["file"], fixture_path.stat().st_mtime_ns)
+    cached = _load_demo_prices_cached(
+        metadata["file"],
+        fixture_path.stat().st_mtime_ns,
+        metadata["sha256"],
+    )
     return cached.copy(deep=True)
 
 

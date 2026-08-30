@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -89,7 +90,8 @@ def main() -> int:
             fixture.index.name = "date"
 
             file_name = f"{market_key}_{symbol.replace('.', '_').lower()}.csv"
-            fixture.to_csv(OUTPUT / file_name, float_format="%.6f")
+            fixture_path = OUTPUT / file_name
+            fixture.to_csv(fixture_path, float_format="%.6f")
             source_metadata = read_source_metadata(cache_path)
             market_manifest["symbols"][symbol] = {
                 "name": name,
@@ -99,6 +101,7 @@ def main() -> int:
                 "end": fixture.index.max().date().isoformat(),
                 "source": source_metadata.get("source", "public provider cache"),
                 "snapshot_saved_at": source_metadata.get("saved_at"),
+                "sha256": hashlib.sha256(fixture_path.read_bytes()).hexdigest(),
             }
         manifest["markets"][market_key] = market_manifest
 

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hashlib
+
 import pandas as pd
 import pytest
 
 from portfolio.demo_engine import (
+    DEMO_DATA_DIR,
     STRATEGIES,
     evidence_diagnostics,
     load_demo_manifest,
@@ -25,6 +28,8 @@ def test_demo_manifest_has_three_clean_instruments_per_market(market_key):
         assert len(prices) >= 300
         assert prices.index.is_monotonic_increasing
         assert not prices[["open", "high", "low", "close", "volume"]].isna().any().any()
+        fixture = DEMO_DATA_DIR / metadata["file"]
+        assert hashlib.sha256(fixture.read_bytes()).hexdigest() == metadata["sha256"]
 
 
 @pytest.mark.parametrize("strategy_key", list(STRATEGIES))

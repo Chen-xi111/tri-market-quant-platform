@@ -58,6 +58,12 @@ uv sync --extra dev
 
 Open [http://localhost:8500](http://localhost:8500). No broker, API key or live quote service is required.
 
+Validate fixture integrity and public-release boundaries at any time:
+
+```bash
+python scripts/release_check.py
+```
+
 ### Full local workspace — four isolated processes
 
 ```bash
@@ -84,6 +90,8 @@ timestamped data -> explainable signal -> one-bar execution lag
 - Public mode cannot render local broker controls or child workspaces.
 
 The detailed evidence contract is in [docs/VALIDATION.md](docs/VALIDATION.md).
+
+Release history is tracked in [CHANGELOG.md](CHANGELOG.md). Before publishing, use the [public release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md); contribution and disclosure guidance live in [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Tests and CI
 

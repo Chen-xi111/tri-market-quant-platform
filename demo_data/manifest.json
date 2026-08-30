@@ -14,7 +14,8 @@
           "start": "2024-01-08",
           "end": "2026-08-28",
           "source": "tencent",
-          "snapshot_saved_at": "2026-08-28T07:23:44.482767+00:00"
+          "snapshot_saved_at": "2026-08-28T07:23:44.482767+00:00",
+          "sha256": "1a6d88f655dc46351f4bc0e1f603816bcb423ec751459be486254916e1f987be"
         },
         "300750.SZ": {
           "name": "CATL",
@@ -23,7 +24,8 @@
           "start": "2024-01-08",
           "end": "2026-08-28",
           "source": "tencent",
-          "snapshot_saved_at": "2026-08-28T07:23:36.900018+00:00"
+          "snapshot_saved_at": "2026-08-28T07:23:36.900018+00:00",
+          "sha256": "08bbca5edc2827fb341c5207e1528e5194f038ab38571c45b1b5b95ca5bb6f49"
         },
         "600019.SS": {
           "name": "Baoshan Iron & Steel",
@@ -32,7 +34,8 @@
           "start": "2024-01-08",
           "end": "2026-08-28",
           "source": "tencent",
-          "snapshot_saved_at": "2026-08-28T07:23:44.482921+00:00"
+          "snapshot_saved_at": "2026-08-28T07:23:44.482921+00:00",
+          "sha256": "5c95d30d514bde32f9d47ca30255d75c496f498fb3bd2ce074830ac3a5d5cfea"
         }
       }
     },
@@ -48,7 +51,8 @@
           "start": "2024-01-19",
           "end": "2026-08-28",
           "source": "tencent",
-          "snapshot_saved_at": "2026-08-28T15:09:29.355692+00:00"
+          "snapshot_saved_at": "2026-08-28T15:09:29.355692+00:00",
+          "sha256": "40d8565d530147a2d1c339850cf4aa5b7328fdfb353c5077c981629180d05644"
         },
         "9988.HK": {
           "name": "Alibaba",
@@ -57,7 +61,8 @@
           "start": "2024-01-19",
           "end": "2026-08-28",
           "source": "tencent",
-          "snapshot_saved_at": "2026-08-28T15:09:34.154743+00:00"
+          "snapshot_saved_at": "2026-08-28T15:09:34.154743+00:00",
+          "sha256": "d67ac54e650ea5770aac57bfcfeacda2fde464e86c1238aa44b25c7cf713f390"
         },
         "2318.HK": {
           "name": "Ping An",
@@ -66,7 +71,8 @@
           "start": "2024-01-19",
           "end": "2026-08-28",
           "source": "tencent",
-          "snapshot_saved_at": "2026-08-28T15:09:34.154708+00:00"
+          "snapshot_saved_at": "2026-08-28T15:09:34.154708+00:00",
+          "sha256": "6c6a07090c933bbd19c62b9e5038266ca13fde12522e340e3d6be15d909c35d5"
         }
       }
     },
@@ -82,7 +88,8 @@
           "start": "2025-02-18",
           "end": "2026-08-28",
           "source": "yfinance",
-          "snapshot_saved_at": "2026-08-28T15:09:06.933592+00:00"
+          "snapshot_saved_at": "2026-08-28T15:09:06.933592+00:00",
+          "sha256": "c00a02e79bd9dd9ba1208a8a99c2f87d5a2ee8ab355754f63e5b27a2364377f7"
         },
         "AAPL": {
           "name": "Apple",
@@ -91,7 +98,8 @@
           "start": "2025-02-18",
           "end": "2026-08-28",
           "source": "yfinance",
-          "snapshot_saved_at": "2026-08-28T15:08:53.620764+00:00"
+          "snapshot_saved_at": "2026-08-28T15:08:53.620764+00:00",
+          "sha256": "ea90bc6f0bde8beaa4ca9bb7c3dc8c7afb13f37f933ef1d143d8b47873509888"
         },
         "NVDA": {
           "name": "NVIDIA",
@@ -100,7 +108,8 @@
           "start": "2025-02-18",
           "end": "2026-08-28",
           "source": "yfinance",
-          "snapshot_saved_at": "2026-08-28T15:08:50.820557+00:00"
+          "snapshot_saved_at": "2026-08-28T15:08:50.820557+00:00",
+          "sha256": "c92e517f98a7c3c98c8d0da5d5e88bf6befd35147e635b5d425229dc7daf7a8d"
         }
       }
     }
