@@ -19,20 +19,39 @@ st.write(
     "and a trading decision."
 )
 
-with st.container(horizontal=True):
-    if st.button(
-        "Open the cross-market lab",
-        type="primary",
-        icon=":material/compare_arrows:",
-        width="stretch",
-    ):
-        st.switch_page("app_pages/comparison.py")
-    if st.button(
-        "Inspect the methodology",
-        icon=":material/science:",
-        width="stretch",
-    ):
-        st.switch_page("app_pages/methodology.py")
+with st.container(border=True):
+    feature_copy, feature_proof = st.columns([3, 2], vertical_alignment="center")
+    with feature_copy:
+        with st.container(horizontal=True, vertical_alignment="center"):
+            st.badge("Signature research view", color="blue", icon=":material/compare_arrows:")
+            st.badge("Same rule across venues", color="gray", icon=":material/functions:")
+        st.subheader("One rule · nine snapshots · three venues")
+        st.write(
+            "Compare held-out evidence across every public instrument without pooling currencies, "
+            "calendars or unequal histories into a misleading portfolio return."
+        )
+        with st.container(horizontal=True):
+            if st.button(
+                "Launch the comparison",
+                type="primary",
+                icon=":material/arrow_forward:",
+                width="stretch",
+            ):
+                st.switch_page("app_pages/comparison.py")
+            if st.button(
+                "Review the methodology",
+                icon=":material/science:",
+                width="stretch",
+            ):
+                st.switch_page("app_pages/methodology.py")
+    with feature_proof:
+        st.markdown("**What a reviewer can verify**")
+        st.markdown(
+            "- Chronological 70/30 holdout\n"
+            "- Venue-default and common-cost lenses\n"
+            "- Drawdown, benchmark and parameter stability"
+        )
+        st.caption("Fixed snapshots · deterministic rules · downloadable evidence")
 
 with st.container(horizontal=True):
     st.metric(
@@ -71,23 +90,6 @@ with st.container(horizontal=True):
         border=True,
         icon=":material/lock:",
     )
-
-st.subheader("Featured research view")
-with st.container(border=True):
-    with st.container(horizontal=True, vertical_alignment="center"):
-        st.badge("Signature view", color="blue", icon=":material/compare_arrows:")
-        st.badge("Same rule across venues", color="gray", icon=":material/functions:")
-    st.subheader("One rule · nine snapshots · three venues")
-    st.write(
-        "Compare held-out evidence across every public instrument without pooling currencies, "
-        "calendars or unequal histories into a misleading portfolio return."
-    )
-    if st.button(
-        "Compare all snapshots",
-        key="featured_comparison",
-        icon=":material/arrow_forward:",
-    ):
-        st.switch_page("app_pages/comparison.py")
 
 st.subheader("Inspect a single market")
 st.caption(

@@ -242,10 +242,11 @@ with st.container(horizontal=True):
     )
 
 best = results.sort_values("validation_sharpe", ascending=False).iloc[0]
-st.caption(
-    f"Snapshot readout: {best['symbol']} has the highest validation Sharpe "
+st.info(
+    f"**Descriptive readout:** {best['symbol']} has the highest validation Sharpe "
     f"({best['validation_sharpe']:.2f}) under this rule and cost basis. "
-    "This is a descriptive comparison, not a security ranking or allocation recommendation."
+    "This fixed-snapshot comparison is not a security ranking or allocation recommendation.",
+    icon=":material/insights:",
 )
 
 map_tab, scorecard_tab, method_tab = st.tabs(

@@ -24,6 +24,11 @@ def test_public_page_renders_without_exceptions(monkeypatch, page):
     app = AppTest.from_file(str(ROOT / page), default_timeout=30).run()
 
     assert not app.exception
+    if page == "streamlit_app.py":
+        labels = {button.label for button in app.button}
+        assert "Launch the comparison" in labels
+        assert "Review the methodology" in labels
+        assert "Open the cross-market lab" not in labels
 
 
 @pytest.mark.parametrize(

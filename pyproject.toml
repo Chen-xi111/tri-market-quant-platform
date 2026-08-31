@@ -1,6 +1,6 @@
 [project]
 name = "tri-market-quant-platform"
-version = "0.3.1"
+version = "0.3.2"
 description = "A unified research and paper-trading platform for China, Hong Kong and US equities."
 requires-python = ">=3.11,<3.14"
 dependencies = [

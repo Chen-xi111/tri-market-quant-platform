@@ -2,6 +2,22 @@
 
 All notable public-facing changes are documented here.
 
+## 0.3.2 — 2026-08-31
+
+### Changed
+
+- The landing page now uses one focused signature-research card instead of two competing cross-market calls to action.
+- The signature card pairs the primary workflow with the exact evidence a reviewer can verify.
+- Single-market results now display the submitted instrument, strategy and cost immediately above the KPI row.
+- The analysis submit action spans the research form, improving hierarchy on desktop and mobile.
+- Cross-market snapshot interpretation is promoted to a clearly labelled descriptive readout.
+- Theme borders, radii and semantic badge colors were refined while retaining the accessible financial-blue palette.
+
+### Verified
+
+- Desktop and 390-pixel mobile views render without horizontal overflow or browser-console errors.
+- Streamlit page tests now protect the consolidated landing-page actions from accidental duplication.
+
 ## 0.3.1 — 2026-08-30
 
 ### Fixed

@@ -224,6 +224,7 @@ def render_demo_dashboard(market_key: str) -> None:
                 "Run analysis",
                 type="primary",
                 icon=":material/play_arrow:",
+                width="stretch",
             )
 
         st.caption(STRATEGY_NOTES[strategy_key])
@@ -245,6 +246,12 @@ def render_demo_dashboard(market_key: str) -> None:
     result_slot = st.container()
     with result_slot.skeleton(height=420):
         result = cached_demo_research(market_key, symbol, strategy_key, float(cost_bps))
+
+    with st.container(horizontal=True, vertical_alignment="center"):
+        st.badge("Current held-out result", color="blue", icon=":material/analytics:")
+        st.badge(f"{symbol} · {metadata['name']}", color="gray", icon=":material/finance:")
+        st.badge(STRATEGIES[strategy_key], color="gray", icon=":material/functions:")
+        st.badge(f"{cost_bps} bps one-way", color="gray", icon=":material/payments:")
 
     validation = result.metrics.loc["Validation"]
     train = result.metrics.loc["Train"]
