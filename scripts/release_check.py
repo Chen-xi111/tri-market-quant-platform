@@ -22,6 +22,7 @@ REQUIRED_FILES = (
     "Dockerfile",
     "docker-compose.yml",
     "run_public.sh",
+    "docs/GITHUB_PUBLISHING.md",
     "demo_data/manifest.json",
 )
 FORBIDDEN_TRACKED_PARTS = {

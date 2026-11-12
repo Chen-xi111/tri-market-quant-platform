@@ -2,26 +2,26 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
-from datetime import datetime
 import gzip
 import json
 import os
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import pandas as pd
+from quant_research import QuantResearchEngine, ResearchEvidence
+from trade_decision import risk_reward_metrics
+from watchlist import load_user_stocks
 
 import config as cfg
 from market_data import fetch_history
-from quant_research import QuantResearchEngine, ResearchEvidence
 from strategies.composite import CompositeStrategy
-from watchlist import load_user_stocks
 
 from .pipeline import HONG_KONG_TZ, ProgressCallback, ScanSnapshot, SnapshotStore
-
 
 MIN_HEAT_SCORE = 55.0
 MIN_LIQUIDITY_SCORE = 45.0
@@ -32,6 +32,8 @@ MIN_BUY_VOTES = 3
 MIN_TREND_QUALITY = 70.0
 MIN_OPPORTUNITY_SCORE = 68.0
 MAX_FRESHNESS_LAG_DAYS = 5
+MIN_CURRENT_REWARD_RISK = 1.30
+MAX_STOP_DISTANCE_PCT = 0.12
 
 
 def _json_default(value):
@@ -77,7 +79,7 @@ class OpportunitySnapshot:
         }
 
     @classmethod
-    def from_payload(cls, payload: dict) -> "OpportunitySnapshot":
+    def from_payload(cls, payload: dict) -> OpportunitySnapshot:
         return cls(
             metadata=payload.get("metadata", {}),
             evaluated=pd.DataFrame(payload.get("evaluated", [])),
@@ -258,7 +260,7 @@ class OpportunityScanner:
         try:
             research = self.research_evaluator(history)
             research_record = research.to_record() if hasattr(research, "to_record") else dict(research)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - quarantine one-symbol research failures
             research_record = ResearchEvidence(
                 "研究失败", False, "不可评估", reasons=(f"{type(exc).__name__}: {exc}",)
             ).to_record()
@@ -275,6 +277,7 @@ class OpportunityScanner:
         latest_close = float(history["close"].iloc[-1])
         stop_loss = self._safe(getattr(signal, "stop_loss", 0))
         take_profit = self._safe(getattr(signal, "take_profit", 0))
+        price_risk = risk_reward_metrics(latest_close, stop_loss, take_profit)
         result.update(
             evaluation_status="已完成",
             latest_bar_date=latest_date.isoformat(),
@@ -288,6 +291,8 @@ class OpportunityScanner:
             recommended_position=float(getattr(signal, "recommended_position", 0) or 0),
             stop_loss=round(stop_loss, 3),
             take_profit=round(take_profit, 3),
+            reward_risk=round(price_risk["reward_risk_now"], 2),
+            stop_distance_pct=round(price_risk["stop_distance_pct"], 4),
             trend_quality=trend,
             opportunity_score=opportunity,
             **research_record,
@@ -308,6 +313,17 @@ class OpportunityScanner:
             gaps.append("保护止损无效或已跌破")
         if take_profit <= latest_close:
             gaps.append("止盈目标已到或无效")
+        if stop_loss > 0 and stop_loss < latest_close and take_profit > latest_close:
+            if price_risk["reward_risk_now"] < MIN_CURRENT_REWARD_RISK:
+                gaps.append(
+                    f"现价盈亏比 {price_risk['reward_risk_now']:.2f}R<"
+                    f"{MIN_CURRENT_REWARD_RISK:.2f}R"
+                )
+            if price_risk["stop_distance_pct"] > MAX_STOP_DISTANCE_PCT:
+                gaps.append(
+                    f"止损距离 {price_risk['stop_distance_pct']:.1%}>"
+                    f"{MAX_STOP_DISTANCE_PCT:.0%}"
+                )
         if opportunity < MIN_OPPORTUNITY_SCORE:
             gaps.append(f"综合机会分 {opportunity:.1f}<{MIN_OPPORTUNITY_SCORE:.0f}")
         if result["strategy_direction"] != "strong_buy" or score < MIN_COMPOSITE_SCORE:

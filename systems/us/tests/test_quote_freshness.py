@@ -1,12 +1,15 @@
 import unittest
 from datetime import datetime, timezone
+from types import ModuleType
 from unittest.mock import MagicMock, patch
+import sys
 
 import pandas as pd
 
 from data_sources.eastmoney_source import EastMoneyUSSource
 from data_sources.futu_source import FutuOpenDSource
 from quote_freshness import (
+    execution_data_block_reason,
     freshness_label,
     merge_live_quote_into_history,
     quote_age_seconds,
@@ -32,6 +35,25 @@ class QuoteFreshnessTests(unittest.TestCase):
         self.assertEqual(
             freshness_label({"price": 1, "_market_data_type": "best_effort"}, True),
             ("源端延迟未知", "orange"),
+        )
+
+    def test_regular_session_execution_requires_a_fresh_quote(self):
+        delayed = {"price": 1, "_market_data_type": "delayed"}
+        self.assertIn(
+            "延迟行情",
+            execution_data_block_reason(
+                delayed, regular_session_open=True,
+            ),
+        )
+        self.assertIsNone(
+            execution_data_block_reason(
+                delayed, regular_session_open=False,
+            )
+        )
+        self.assertIsNone(
+            execution_data_block_reason(
+                delayed, regular_session_open=True, data_is_cached=True,
+            )
         )
 
     def test_live_quote_updates_current_daily_bar_without_mutating_history(self):
@@ -93,17 +115,20 @@ class QuoteFreshnessTests(unittest.TestCase):
                 "update_time": "2026-08-21 19:59:59.839",
             }]),
         )
+        fake_futu = ModuleType("futu")
+        fake_futu.OpenQuoteContext = MagicMock(return_value=context)
+        fake_futu.RET_OK = 0
         FutuOpenDSource.close_shared_session()
         try:
             with (
-                patch("futu.OpenQuoteContext", return_value=context) as constructor,
+                patch.dict(sys.modules, {"futu": fake_futu}),
                 patch.object(FutuOpenDSource, "opend_is_listening", return_value=True),
                 patch.object(FutuOpenDSource, "_min_snapshot_interval_seconds", 0),
             ):
                 first = FutuOpenDSource("AAPL").get_realtime()
                 second = FutuOpenDSource("AAPL").get_realtime()
 
-            constructor.assert_called_once_with(host="127.0.0.1", port=11111)
+            fake_futu.OpenQuoteContext.assert_called_once_with(host="127.0.0.1", port=11111)
             self.assertEqual(context.get_market_snapshot.call_count, 2)
             self.assertFalse(first["_connection_reused"])
             self.assertTrue(second["_connection_reused"])

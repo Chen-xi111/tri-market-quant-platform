@@ -213,6 +213,32 @@ class OpportunityScannerTests(unittest.TestCase):
             result["selection_path"], "量化验证主导·资金未恶化·样本外验证"
         )
 
+    def test_high_score_is_rejected_when_current_reward_risk_is_too_low(self):
+        def loader(ticker, days):
+            return sample_history(ticker), "fake", ()
+
+        def evaluator(frame):
+            return SimpleNamespace(
+                direction="strong_buy", score=7.0, confidence=0.75,
+                buy_votes=4, sell_votes=0, recommended_position=0.20,
+                stop_loss=17.0, take_profit=19.5,
+            )
+
+        row = {
+            "rank": 1, "code": "300750", "name": "强势股", "flow_score": 95.0,
+            "positive_periods": 3, "main_net_today": 900_000_000,
+            "change_pct_today": 2.0, "capital_signal": "连续流入",
+            "discovery_source": "全市资金榜",
+        }
+        result = OpportunityScanner(
+            history_loader=loader, signal_evaluator=evaluator,
+            research_evaluator=passed_research, always_candidates={},
+        )._evaluate_one(row, "2026-08-21")
+
+        self.assertFalse(result["is_recommended"])
+        self.assertLess(result["reward_risk"], 1.3)
+        self.assertIn("现价盈亏比", result["rejection_reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()

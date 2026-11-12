@@ -73,6 +73,8 @@ def display_table(frame: pd.DataFrame, key: str) -> None:
         "latest_close": "最新收盘",
         "stop_loss": "策略止损",
         "take_profit": "策略止盈",
+        "reward_risk": "现价盈亏比",
+        "stop_distance_pct": "止损距离",
         "evaluation_status": "评分状态",
         "rejection_reasons": "未入选原因",
     }
@@ -111,6 +113,8 @@ def display_table(frame: pd.DataFrame, key: str) -> None:
             "最新收盘": st.column_config.NumberColumn(format="%.3f"),
             "策略止损": st.column_config.NumberColumn(format="%.3f"),
             "策略止盈": st.column_config.NumberColumn(format="%.3f"),
+            "现价盈亏比": st.column_config.NumberColumn(format="%.2fR"),
+            "止损距离": st.column_config.NumberColumn(format="percent"),
         },
     )
 
@@ -221,7 +225,8 @@ with st.expander("强信心门槛"):
         "先通过量化研究硬门槛：至少 120 个样本外观测和 4 个扩展窗口，"
         "AUC ≥ 0.52、概率误差优于历史胜率基线、高概率信号成本后平均收益为正、"
         "至少一半验证窗口为正，且当前模型上涨概率 ≥ 55%。再通过公共风控："
-        "前置机会分 ≥ 70、止损/止盈仍有效、K 线新鲜、"
+        "前置机会分 ≥ 70、止损/止盈仍有效、现价盈亏比 ≥ 1.30R、"
+        "止损距离 ≤ 12%、K 线新鲜、"
         "非 ST/退市且未接近各自板块涨停。然后满足任一路径：\n\n"
         "- **资金·策略共振**：原策略 ≥ +5、买入票 ≥ 2、资金强度 ≥ 75，"
         "3 个周期至少 2 个流入且当日净流入。\n"

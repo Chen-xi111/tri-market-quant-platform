@@ -2,6 +2,32 @@
 
 All notable public-facing changes are documented here.
 
+## 0.4.0 — 2026-09-12
+
+### Added
+
+- A current-price decision gate across the China, Hong Kong and US local workspaces.
+- Explicit blockers for stale cached quotes, prices beyond the chase limit, invalid stop placement and insufficient reward/risk.
+- Session-aware simulated-order sizing that respects the original risk budget, position cap and venue lot size.
+- Direct local-workspace entrances on the full launcher home page while preserving the broker-free public view.
+
+### Changed
+
+- US cross-sectional ranking now separates research attractiveness from execution readiness and exposes conservative, balanced and opportunity profiles.
+- China and Hong Kong opportunity views now surface reward/risk and decision-state fields instead of relying on an aggregate score alone.
+- Venue clocks now distinguish executable continuous/regular sessions from quote-only auctions, lunch breaks and extended hours.
+- Hong Kong deep links and per-instrument board-lot state no longer reset or leak across symbols.
+- The US execution decision card now refreshes with the live quote while signal direction, entry zones and backtests remain anchored to completed daily bars.
+- US chart fonts are registered explicitly so Chinese instrument names render without missing-glyph warnings.
+- GitHub Actions now lints the cross-market decision, session and ranking modules in addition to the public portal.
+- Historical-bar quote fallbacks in the China and Hong Kong workspaces are now explicit no-new-position states.
+- Test-count documentation now matches the expanded 187-test suite plus 19 generated subtests.
+
+### Verified
+
+- All portfolio, China, Hong Kong and US test suites pass after the decision-gate integration.
+- Python 3.11 target parsing, public-release boundaries, fixture checksums and secret-path checks pass.
+
 ## 0.3.2 — 2026-08-31
 
 ### Changed

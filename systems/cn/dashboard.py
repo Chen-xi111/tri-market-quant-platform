@@ -19,7 +19,14 @@ from datetime import datetime
 
 from data_sources import SOURCES
 from market_data import fetch_history, fetch_quote, quote_from_history
-from market_clock import CNMarketPhase, SHANGHAI_TZ, cn_market_phase, is_cn_quote_session
+from market_clock import (
+    CNMarketPhase,
+    SHANGHAI_TZ,
+    cn_market_phase,
+    is_cn_continuous_session,
+    is_cn_quote_session,
+)
+from trade_decision import assess_trade_decision, quote_requires_execution_block
 from trade_plan import build_trade_plan, plan_order_rows
 from strategies import STRATEGIES
 from strategies.composite import CompositeStrategy
@@ -223,6 +230,10 @@ def render_sidebar():
         capital = st.number_input("初始资金 (CNY)", value=cfg.INITIAL_CAPITAL, step=10000.0, format="%.0f")
         max_pos = st.slider("最大仓位 (%)", 5, 100, int(cfg.MAX_POSITION_PCT * 100), 5) / 100
         max_risk = st.slider("单笔风险 (%)", 0.5, 10.0, cfg.MAX_SINGLE_RISK_PCT * 100, 0.5) / 100
+        if max_risk > 0.02:
+            st.warning("单笔风险高于 2% 会显著放大连续亏损；实操前建议先降到 0.5%–1%。")
+        if max_pos > 0.40:
+            st.warning("单股仓位高于 40% 会形成集中度风险，板块筛选无法抵消。")
         lot_size = int(
             st.number_input(
                 "买入单位（股）",
@@ -274,6 +285,7 @@ def main():
         CNMarketPhase.MORNING: ("上午连续竞价", "green"),
         CNMarketPhase.LUNCH: ("午间休市", "orange"),
         CNMarketPhase.AFTERNOON: ("下午交易", "green"),
+        CNMarketPhase.CLOSING_AUCTION: ("收盘集合竞价", "orange"),
         CNMarketPhase.CLOSED: ("休市", "gray"),
     }
     phase_label, phase_color = phase_labels[cn_market_phase()]
@@ -336,6 +348,8 @@ def main():
         if quote.get("_cached"):
             quote_source_label += "（本地缓存）"
 
+    quote_is_nonlive = quote_requires_execution_block(quote, quote_source_label)
+
     quote_name = str(quote.get("name") or "").strip()
     if stock_name.startswith("自定义") and quote_name not in ("", yahoo_code, raw_code):
         stock_name = quote_name
@@ -345,9 +359,10 @@ def main():
         f"历史数据: {actual_source_label} | 报价数据: {quote_source_label} | "
         f"更新: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
-    if history_is_cached or quote.get("_cached"):
+    if history_is_cached or quote_is_nonlive:
         st.warning(
-            "当前至少一项行情来自最近成功的本地缓存；可查看数据，但不要据此执行新交易。",
+            "当前至少一项行情来自本地缓存或历史 K 线回退；"
+            "可查看数据，但决策卡会禁止新开仓。",
             icon=":material/cloud_off:",
         )
     if actual_source != source_key and source_key != "eastmoney":
@@ -445,15 +460,54 @@ def render_realtime_only(quote, stock_name, raw_code, history_failures):
             st.code("\n".join(history_failures), language=None)
 
 
-def render_trade_plan(plan):
-    """用可执行条件取代单一的“买/卖”结论。"""
-    st.subheader("交易计划", help="由综合信号、趋势、ATR 风险和仓位上限联合生成")
-    badge_color = "green" if plan["actionable"] else "orange"
-    badge_icon = ":material/check_circle:" if plan["actionable"] else ":material/pause_circle:"
-    st.badge(plan["action"], color=badge_color, icon=badge_icon)
+def render_trade_plan(
+    plan, *, current_price, volume_ratio, session_open, data_is_cached, limit_up,
+):
+    """先显示实时决策门槛，再保留原有分批计划明细。"""
+    decision = assess_trade_decision(
+        plan,
+        current_price,
+        volume_ratio=volume_ratio,
+        session_open=session_open,
+        data_is_cached=data_is_cached,
+        limit_up=limit_up,
+    )
+    color_map = {
+        "orderable": "green", "ready_later": "blue", "waiting": "orange",
+        "watch": "gray", "blocked": "red",
+    }
+    icon_map = {
+        "orderable": ":material/check_circle:", "ready_later": ":material/schedule:",
+        "waiting": ":material/hourglass_top:", "watch": ":material/visibility:",
+        "blocked": ":material/block:",
+    }
+    st.subheader(
+        "交易决策卡",
+        help="综合分只负责发现候选；当前价格、盈亏比、止损距离和数据状态决定是否可执行。",
+    )
+    st.badge(
+        decision["headline"], color=color_map[decision["status_key"]],
+        icon=icon_map[decision["status_key"]],
+    )
+    st.write(f"**下一步：** {decision['next_action']}")
+    if decision["hard_blockers"]:
+        st.error("阻断原因：" + "；".join(decision["hard_blockers"]), icon=":material/block:")
+
+    with st.container(horizontal=True):
+        st.metric("现价位置", decision["price_location"], border=True)
+        st.metric("现价至目标一", f"{decision['reward_risk_now']:.2f}R", border=True)
+        st.metric("现价至止损", f"{decision['stop_distance_pct']:.1%}", border=True)
+        st.metric(
+            "条件满足后本次上限",
+            f"{decision['planned_tranche_shares']:,} 股",
+            f"风险 ¥ {decision['planned_risk_now']:,.0f}",
+            border=True,
+        )
+
+    st.markdown("**计划参数**")
     st.caption(
         f"市场状态：{plan['regime']} | 数据日：{plan['data_date']} | "
-        f"买入单位 {plan['lot_size']} 股"
+        f"买入单位 {plan['lot_size']} 股 | 日线计划：{plan['action']}"
     )
 
     with st.container(horizontal=True):
@@ -462,7 +516,11 @@ def render_trade_plan(plan):
             f"{plan['entry_low']:.3f}~{plan['entry_high']:.3f}",
             border=True,
         )
-        st.metric("突破确认价", f"{plan['breakout_trigger']:.3f}", border=True)
+        st.metric(
+            "确认价 / 追价上限",
+            f"{plan['breakout_trigger']:.3f} / {decision['max_chase']:.3f}",
+            border=True,
+        )
         st.metric("保护止损", f"{plan['stop_loss']:.3f}", border=True)
         st.metric(
             "计划仓位",
@@ -472,15 +530,17 @@ def render_trade_plan(plan):
         )
 
     with st.container(horizontal=True):
-        st.metric("止盈一", f"{plan['target_1']:.3f}", "1.5R", border=True)
-        st.metric("止盈二", f"{plan['target_2']:.3f}", "2.5R", border=True)
+        st.metric("止盈一", f"{plan['target_1']:.3f}", f"{plan['reward_risk_1']:.2f}R", border=True)
+        st.metric("止盈二", f"{plan['target_2']:.3f}", f"{plan['reward_risk_2']:.2f}R", border=True)
         st.metric("计划最大亏损", f"¥ {plan['planned_risk']:,.0f}", border=True)
         st.metric("风险预算", f"¥ {plan['risk_budget']:,.0f}", border=True)
 
-    checks = " ".join(
-        f":{'green' if passed else 'red'}-badge[{'\u901a\u8fc7' if passed else '\u672a\u901a\u8fc7'} · {label}]"
-        for label, passed in plan["checks"].items()
-    )
+    check_badges = []
+    for label, passed in decision["checks"].items():
+        color = "green" if passed else "red"
+        status = "通过" if passed else "未通过"
+        check_badges.append(f":{color}-badge[{status} · {label}]")
+    checks = " ".join(check_badges)
     st.markdown(checks)
     st.dataframe(
         pd.DataFrame(plan_order_rows(plan)),
@@ -492,7 +552,15 @@ def render_trade_plan(plan):
         },
         key="trade_plan_steps",
     )
-    st.caption(f"失效条件：{plan['invalidation']}。计划仅用于模拟验证，不会自动提交实盘订单。")
+    with st.expander("实盘前人工复核（平台无法自动确认）", icon=":material/fact_check:"):
+        st.markdown(
+            "- 已检查公告、业绩预告、停复牌、除权除息与监管风险\n"
+            "- 盘口价差和可成交量能承受计划股数\n"
+            "- 已核对同板块持仓、组合总风险和当日最大亏损\n"
+            "- A 股当日买入通常不能当日卖出，隔夜风险已接受"
+        )
+    st.caption(f"失效条件：{plan['invalidation']}。决策卡用于研究与模拟验证，不会自动提交实盘订单。")
+    return decision
 
 
 def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, lot_size, stock_name, raw_code):
@@ -525,6 +593,7 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
 
     # ============ 综合交易指导 ============
     st.subheader("🎯 日线交易指导（多策略投票）")
+    decision = None
     try:
         cs = evaluate_composite(df)
 
@@ -565,7 +634,17 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
             max_position_pct=max_pos,
             lot_size=lot_size,
         )
-        render_trade_plan(plan)
+        decision = render_trade_plan(
+            plan,
+            current_price=float(price),
+            volume_ratio=float(_vr),
+            session_open=is_cn_continuous_session(),
+            data_is_cached=(
+                bool(df.attrs.get("market_data_cached"))
+                or quote_requires_execution_block(quote)
+            ),
+            limit_up=float(limit_up),
+        )
 
         # 各策略投票明细
         with st.expander("📋 各策略投票明细", expanded=True):
@@ -633,9 +712,16 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
         st.metric("KDJ-J", f"{kdj_j:.1f}", delta="超买钝化" if kdj_j > 100 else "超卖钝化" if kdj_j < 0 else "正常")
         st.metric("布林 %b", f"{boll_pct:.2f}", delta="触上轨" if boll_pct > 0.95 else "触下轨" if boll_pct < 0.05 else "中轨附近")
 
-    # 风控建议
+    # ATR 风险预算只是理论上限，不应与交易决策卡的可执行数量混淆。
     st.divider()
-    st.subheader("🛡️ 风控建议")
+    st.subheader("🛡️ ATR 理论风险上限（非订单）")
+    if decision is not None:
+        st.caption(
+            f"当前决策卡：{decision['headline']}；当前可执行数量 "
+            f"{decision['order_shares_now']:,} 股。下方只回答“若已有有效信号，风险预算上限是多少”。"
+        )
+    else:
+        st.caption("下方是 ATR 风险预算上限，不构成当前订单数量。")
 
     atr_val = df["ATR"].iloc[-1]
     pos = risk_mgr.position_size(
@@ -647,10 +733,10 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
     )
 
     pos_cols = st.columns(4)
-    pos_cols[0].metric("建议股数", f"{pos['shares']:,}股")
-    pos_cols[1].metric("仓位金额", f"¥ {pos['position_value']:,.0f}", f"{pos['position_pct']:.1f}%")
-    pos_cols[2].metric("止损价", f"{pos['stop_loss_price']:.2f}", f"风险 ¥{pos['max_risk']:,.0f}")
-    pos_cols[3].metric("止盈价", f"{pos['take_profit_price']:.3f}")
+    pos_cols[0].metric("ATR 理论股数", f"{pos['shares']:,}股")
+    pos_cols[1].metric("理论仓位金额", f"¥ {pos['position_value']:,.0f}", f"{pos['position_pct']:.1f}%")
+    pos_cols[2].metric("ATR 止损参考", f"{pos['stop_loss_price']:.2f}", f"风险 ¥{pos['max_risk']:,.0f}")
+    pos_cols[3].metric("ATR 止盈参考", f"{pos['take_profit_price']:.3f}")
 
     # 情景分析
     st.caption("📉 情景分析（基于 ATR）")

@@ -2,7 +2,12 @@ import unittest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from market_clock import CNMarketPhase, cn_market_phase, is_cn_quote_session
+from market_clock import (
+    CNMarketPhase,
+    cn_market_phase,
+    is_cn_continuous_session,
+    is_cn_quote_session,
+)
 
 
 CN = ZoneInfo("Asia/Shanghai")
@@ -18,6 +23,22 @@ class MarketClockTests(unittest.TestCase):
         moment = datetime(2026, 8, 10, 12, 0, tzinfo=CN)
         self.assertEqual(cn_market_phase(moment), CNMarketPhase.LUNCH)
         self.assertTrue(is_cn_quote_session(moment))
+        self.assertFalse(is_cn_continuous_session(moment))
+
+    def test_only_continuous_auction_is_orderable(self):
+        self.assertFalse(
+            is_cn_continuous_session(datetime(2026, 8, 10, 9, 20, tzinfo=CN))
+        )
+        self.assertTrue(
+            is_cn_continuous_session(datetime(2026, 8, 10, 10, 30, tzinfo=CN))
+        )
+        self.assertTrue(
+            is_cn_continuous_session(datetime(2026, 8, 10, 14, 30, tzinfo=CN))
+        )
+        closing = datetime(2026, 8, 10, 14, 58, tzinfo=CN)
+        self.assertEqual(cn_market_phase(closing), CNMarketPhase.CLOSING_AUCTION)
+        self.assertTrue(is_cn_quote_session(closing))
+        self.assertFalse(is_cn_continuous_session(closing))
 
     def test_after_hours_and_weekend_use_daily_close(self):
         self.assertFalse(is_cn_quote_session(datetime(2026, 8, 10, 20, 0, tzinfo=CN)))

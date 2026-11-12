@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
@@ -18,12 +18,12 @@ def parse_quote_time(value: Any) -> datetime | None:
         parsed = value
     else:
         try:
-            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(str(value))
         except (TypeError, ValueError):
             return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=NEW_YORK_TZ)
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)
 
 
 def quote_age_seconds(quote: dict | None, now: datetime | None = None) -> float | None:
@@ -32,10 +32,10 @@ def quote_age_seconds(quote: dict | None, now: datetime | None = None) -> float 
     timestamp = parse_quote_time(quote.get("_market_time") or quote.get("_received_at"))
     if timestamp is None:
         return None
-    current = now or datetime.now(timezone.utc)
+    current = now or datetime.now(UTC)
     if current.tzinfo is None:
-        current = current.replace(tzinfo=timezone.utc)
-    return max(0.0, (current.astimezone(timezone.utc) - timestamp).total_seconds())
+        current = current.replace(tzinfo=UTC)
+    return max(0.0, (current.astimezone(UTC) - timestamp).total_seconds())
 
 
 def format_age(seconds: float | None) -> str:
@@ -72,6 +72,24 @@ def freshness_label(quote: dict | None, quote_session_open: bool) -> tuple[str, 
     if age <= 20 * 60:
         return "报价可能延迟", "orange"
     return "报价陈旧", "red"
+
+
+def execution_data_block_reason(
+    quote: dict | None,
+    *,
+    regular_session_open: bool,
+    data_is_cached: bool = False,
+) -> str | None:
+    """常规时段只允许明确新鲜的报价通过新开仓门槛。
+
+    缓存数据由公共决策门槛单独报错，这里不重复生成原因。
+    """
+    if not regular_session_open or data_is_cached:
+        return None
+    label, color = freshness_label(quote, True)
+    if color == "green":
+        return None
+    return f"常规交易时段报价状态为“{label}”，不用于新开仓"
 
 
 def quote_time_text(quote: dict | None) -> str:

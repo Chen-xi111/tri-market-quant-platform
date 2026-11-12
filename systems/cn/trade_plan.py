@@ -53,6 +53,7 @@ def build_trade_plan(
     entry_low = max(0.001, entry_center - 0.25 * atr)
     entry_high = entry_center + 0.25 * atr
     trigger = max(resistance, price + 0.1 * atr)
+    max_chase = max(trigger, entry_high) + 0.5 * atr
 
     structural_stop = support - 0.2 * atr
     atr_stop = entry_center - 2.0 * atr
@@ -116,6 +117,7 @@ def build_trade_plan(
         "entry_high": entry_high,
         "entry_center": entry_center,
         "breakout_trigger": trigger,
+        "max_chase": max_chase,
         "support": support,
         "resistance": resistance,
         "stop_loss": stop,
@@ -130,8 +132,8 @@ def build_trade_plan(
         "add_shares": add_shares,
         "planned_value": shares * entry_center,
         "planned_risk": shares * risk_per_share,
-        "reward_risk_1": 1.5,
-        "reward_risk_2": 2.5,
+        "reward_risk_1": max(0.0, (target_1 - entry_center) / risk_per_share),
+        "reward_risk_2": max(0.0, (target_2 - entry_center) / risk_per_share),
         "invalidation": f"收盘跌破 {stop:.3f} 或趋势转为下降，计划失效",
         "checks": {
             "数据新鲜": data_fresh,

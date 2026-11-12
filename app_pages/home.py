@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from platform_hub import MARKETS, service_is_healthy
+from platform_hub import MARKETS, market_url, public_mode_enabled, service_is_healthy
 from portfolio.demo_engine import load_demo_manifest
 
 manifest = load_demo_manifest()
@@ -74,7 +74,7 @@ with st.container(horizontal=True):
     )
     st.metric(
         "Automated tests",
-        165,
+        187,
         delta="Plus 19 subtests",
         delta_color="off",
         delta_arrow="off",
@@ -126,6 +126,47 @@ for column, (key, market) in zip(columns, MARKETS.items()):
             width="stretch",
         ):
             st.switch_page(market_pages[key])
+
+if not public_mode_enabled():
+    st.subheader("Local decision-workspace entrances")
+    st.caption(
+        "The live workspaces separate candidate discovery from the final price-and-risk decision card."
+    )
+    entrance_columns = st.columns(3, vertical_alignment="top")
+    entrance_groups = {
+        "cn": (
+            ("Open A-share workbench", ""),
+            ("Fund-flow radar", "/fund_flow_radar"),
+            ("Strong-confidence candidates", "/opportunities"),
+            ("Quant research validation", "/quant_research"),
+        ),
+        "hk": (
+            ("Open Hong Kong workbench", ""),
+            ("Market scanner", "/market_scanner"),
+            ("Strong-confidence candidates", "/opportunities"),
+        ),
+        "us": (
+            ("Open US workbench and ranking", ""),
+        ),
+    }
+    for column, key in zip(entrance_columns, ("cn", "hk", "us")):
+        market = MARKETS[key]
+        online = service_is_healthy(market.port)
+        with column.container(border=True, height="stretch"):
+            st.markdown(f"**{market.short_name}**")
+            st.badge(
+                "Service online" if online else "Service offline",
+                color="green" if online else "gray",
+                icon=":material/check_circle:" if online else ":material/power_off:",
+            )
+            for label, path in entrance_groups[key]:
+                st.link_button(
+                    label,
+                    market_url(market) + path,
+                    icon=":material/open_in_new:",
+                    disabled=not online,
+                    width="stretch",
+                )
 
 st.subheader("What the repository demonstrates")
 evidence_columns = st.columns(3, vertical_alignment="top")

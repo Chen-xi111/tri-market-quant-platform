@@ -63,6 +63,34 @@ class OpportunityTests(unittest.TestCase):
             ).run(snapshot())
             self.assertEqual(result.recommended["code"].tolist(), ["01164"])
 
+    def test_high_score_is_rejected_when_reward_risk_is_too_low(self):
+        def loader(ticker, days):
+            return history(ticker), "fake", ()
+
+        def signal(_frame):
+            return SimpleNamespace(
+                direction="strong_buy", score=7.0, confidence=0.75,
+                buy_votes=4, sell_votes=0, recommended_position=0.2,
+                stop_loss=18.0, take_profit=20.5,
+            )
+
+        def research(_frame):
+            return {
+                "research_gate_pass": True, "research_probability": 0.65,
+                "research_quality": 70.0, "research_status": "样本外通过",
+                "research_reasons": "通过",
+            }
+
+        row = snapshot().stocks.iloc[0].to_dict()
+        result = OpportunityScanner(
+            history_loader=loader, signal_evaluator=signal,
+            research_evaluator=research, always_candidates={},
+        )._evaluate_one(row, "2026-08-24")
+
+        self.assertFalse(result["is_recommended"])
+        self.assertLess(result["reward_risk"], 1.3)
+        self.assertIn("现价盈亏比", result["rejection_reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()

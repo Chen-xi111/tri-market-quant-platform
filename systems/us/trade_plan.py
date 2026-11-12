@@ -5,6 +5,7 @@ from __future__ import annotations
 from math import floor
 
 import pandas as pd
+from stock_ranking import build_execution_setup, extract_stock_features
 
 
 def _round_down_lot(shares: float, lot_size: int) -> int:
@@ -19,6 +20,7 @@ def build_trade_plan(
     risk_pct: float,
     max_position_pct: float,
     lot_size: int = 1,
+    strategy_key: str | None = None,
 ) -> dict:
     """
     生成入场区间、触发价、止损、两档止盈与按风险反推的股数。
@@ -53,6 +55,10 @@ def build_trade_plan(
     entry_low = max(0.001, entry_center - 0.25 * atr)
     entry_high = entry_center + 0.25 * atr
     trigger = max(resistance, price + 0.1 * atr)
+    max_chase = entry_high + 0.5 * atr
+    strategy_state = "ready"
+    strategy_reason = "未指定单一策略，使用通用回调计划"
+    entry_condition = "价格进入回调区后转强"
 
     structural_stop = support - 0.2 * atr
     atr_stop = entry_center - 2.0 * atr
@@ -64,6 +70,26 @@ def build_trade_plan(
     target_1 = entry_center + 1.5 * risk_per_share
     target_2 = entry_center + 2.5 * risk_per_share
 
+    if strategy_key:
+        try:
+            feature = extract_stock_features("PLAN", df, strategy_key)
+            setup = build_execution_setup(feature, strategy_key)
+            entry_low = float(setup["entry_low"])
+            entry_high = float(setup["entry_high"])
+            entry_center = float(setup["entry_center"])
+            trigger = float(setup["breakout_trigger"])
+            max_chase = float(setup["max_chase"])
+            stop = float(setup["stop_loss"])
+            target_1 = float(setup["target_1"])
+            target_2 = float(setup["target_2"])
+            risk_per_share = float(setup["risk_per_share"])
+            strategy_state = str(setup["setup_state"])
+            strategy_reason = str(setup["setup_reason"])
+            entry_condition = str(setup["entry_condition"])
+        except (ValueError, TypeError, KeyError, IndexError) as exc:
+            strategy_state = "watch"
+            strategy_reason = f"当前策略入场检查失败：{exc}"
+
     index_value = df.index[-1]
     last_date = pd.Timestamp(index_value).tz_localize(None).normalize()
     today = pd.Timestamp.now().tz_localize(None).normalize()
@@ -72,7 +98,8 @@ def build_trade_plan(
     bullish = composite.direction in ("buy", "strong_buy")
     trend_ok = regime != "下降趋势"
     confidence_ok = float(composite.confidence) >= 0.25
-    actionable = data_fresh and bullish and trend_ok and confidence_ok
+    strategy_ready = strategy_state == "ready"
+    actionable = data_fresh and bullish and trend_ok and confidence_ok and strategy_ready
 
     recommended_fraction = min(
         float(max_position_pct),
@@ -99,10 +126,12 @@ def build_trade_plan(
         action = "观望：下降趋势中不新开多仓"
     elif not confidence_ok:
         action = "观望：有效策略共识不足"
+    elif not strategy_ready:
+        action = f"等待当前策略：{strategy_reason}"
     elif shares < max(1, int(lot_size)):
         action = "观望：风险预算不足 1 股"
     else:
-        action = "分两笔试仓：回调区首笔，放量突破后加仓"
+        action = "技术条件与多策略共识均通过，可按计划分批模拟"
 
     return {
         "actionable": actionable and shares > 0,
@@ -116,6 +145,7 @@ def build_trade_plan(
         "entry_high": entry_high,
         "entry_center": entry_center,
         "breakout_trigger": trigger,
+        "max_chase": max_chase,
         "support": support,
         "resistance": resistance,
         "stop_loss": stop,
@@ -130,14 +160,19 @@ def build_trade_plan(
         "add_shares": add_shares,
         "planned_value": shares * entry_center,
         "planned_risk": shares * risk_per_share,
-        "reward_risk_1": 1.5,
-        "reward_risk_2": 2.5,
+        "reward_risk_1": max(0.0, (target_1 - entry_center) / risk_per_share),
+        "reward_risk_2": max(0.0, (target_2 - entry_center) / risk_per_share),
+        "strategy_key": strategy_key,
+        "strategy_setup_state": strategy_state,
+        "strategy_setup_reason": strategy_reason,
+        "entry_condition": entry_condition,
         "invalidation": f"收盘跌破 USD {stop:.2f} 或趋势转为下降，计划失效",
         "checks": {
             "数据新鲜": data_fresh,
             "综合信号偏多": bullish,
             "趋势过滤通过": trend_ok,
             "策略共识足够": confidence_ok,
+            "当前策略到达入场条件": strategy_ready,
         },
     }
 
@@ -153,7 +188,7 @@ def plan_order_rows(plan: dict) -> list[dict]:
         },
         {
             "阶段": "确认加仓",
-            "条件": f"收盘放量站上 USD {plan['breakout_trigger']:.2f}",
+            "条件": f"{plan['entry_condition']}；确认价 USD {plan['breakout_trigger']:.2f}",
             "数量": plan["add_shares"],
             "价格": plan["breakout_trigger"],
         },
@@ -165,13 +200,13 @@ def plan_order_rows(plan: dict) -> list[dict]:
         },
         {
             "阶段": "止盈一",
-            "条件": "达到 1.5R 后减半仓",
+            "条件": f"首目标 {plan['reward_risk_1']:.2f}R 后减半仓",
             "数量": plan["first_shares"],
             "价格": plan["target_1"],
         },
         {
             "阶段": "止盈二",
-            "条件": "达到 2.5R 或移动止损",
+            "条件": f"第二目标 {plan['reward_risk_2']:.2f}R 或移动止损",
             "数量": plan["add_shares"],
             "价格": plan["target_2"],
         },

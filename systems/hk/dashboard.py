@@ -20,7 +20,14 @@ from datetime import datetime
 from data_sources import SOURCES
 from market_data import fetch_history, fetch_quote, quote_from_history
 from limited_guidance import build_limited_guidance
-from market_clock import is_hk_quote_session
+from market_clock import (
+    HONG_KONG_TZ,
+    HKMarketPhase,
+    hk_market_phase,
+    is_hk_continuous_session,
+    is_hk_quote_session,
+)
+from trade_decision import assess_trade_decision, quote_requires_execution_block
 from trade_plan import build_trade_plan, plan_order_rows
 from strategies import STRATEGIES
 from strategies.composite import CompositeStrategy
@@ -150,6 +157,19 @@ def render_sidebar():
         user_stocks = load_user_stocks(cfg.normalize_ticker)
         stock_options = list(dict.fromkeys([*cfg.PRESET_STOCKS, *user_stocks]))
 
+        requested_ticker = st.query_params.get("ticker")
+        if isinstance(requested_ticker, list):
+            requested_ticker = requested_ticker[0] if requested_ticker else None
+        if requested_ticker:
+            try:
+                requested_yahoo = cfg.normalize_ticker(str(requested_ticker))[0]
+                if requested_yahoo not in stock_options:
+                    stock_options.append(requested_yahoo)
+                st.session_state["stock_selector"] = requested_yahoo
+                del st.query_params["ticker"]
+            except ValueError as exc:
+                st.warning(f"候选股链接无效：{exc}")
+
         def format_stock_option(value):
             try:
                 yahoo_code, _, raw_code = cfg.normalize_ticker(value)
@@ -208,13 +228,18 @@ def render_sidebar():
         capital = st.number_input("初始资金 (HKD)", value=cfg.INITIAL_CAPITAL, step=10000.0, format="%.0f")
         max_pos = st.slider("最大仓位 (%)", 5, 100, int(cfg.MAX_POSITION_PCT * 100), 5) / 100
         max_risk = st.slider("单笔风险 (%)", 0.5, 10.0, cfg.MAX_SINGLE_RISK_PCT * 100, 0.5) / 100
+        if max_risk > 0.02:
+            st.warning("单笔风险高于 2% 会显著放大连续亏损；实操前建议先降到 0.5%–1%。")
+        if max_pos > 0.40:
+            st.warning("单股仓位高于 40% 会形成集中度风险，市场扫描无法抵消。")
         lot_size = int(
             st.number_input(
                 "每手股数",
                 min_value=1,
                 value=100,
-                step=100,
-                help="请按券商显示的当前港股买卖单位填写。",
+                step=1,
+                key=f"hk_lot_size_{yahoo_code}",
+                help="港股每只证券的买卖单位可能不同；请按券商当前显示填写。",
             )
         )
 
@@ -248,6 +273,19 @@ def main():
     strategy_key, capital, max_pos, max_risk, lot_size, backtest_days, source_key, yahoo_code, futu_code, stock_name, raw_code = render_sidebar()
 
     st.title(f"📈 {stock_name} ({raw_code})")
+    phase_labels = {
+        HKMarketPhase.PRE_OPEN: ("开市前时段", "orange"),
+        HKMarketPhase.MORNING: ("上午连续交易", "green"),
+        HKMarketPhase.LUNCH: ("午间时段", "orange"),
+        HKMarketPhase.AFTERNOON: ("下午连续交易", "green"),
+        HKMarketPhase.CLOSING_AUCTION: ("收市竞价", "orange"),
+        HKMarketPhase.CLOSED: ("休市", "gray"),
+    }
+    phase_label, phase_color = phase_labels[hk_market_phase()]
+    with st.container(horizontal=True):
+        st.badge(f"港股 · {phase_label}", color=phase_color, icon=":material/schedule:")
+        st.badge(f"HKD · 每手 {lot_size} 股", color="blue")
+        st.caption(f"香港时间 {datetime.now(HONG_KONG_TZ).strftime('%Y-%m-%d %H:%M')}")
     metadata_slot = st.empty()
 
     # 动态页签只执行用户当前看到的部分，避免切股时运行隐藏回测。
@@ -298,15 +336,18 @@ def main():
         if quote.get("_cached"):
             quote_source_label += "（本地缓存）"
 
+    quote_is_nonlive = quote_requires_execution_block(quote, quote_source_label)
+
     metadata_slot.caption(
         f"历史数据: {actual_source_label}"
         + (f"（短历史 {len(df)}/60）" if df.attrs.get("market_data_limited") else "")
         + f" | 报价数据: {quote_source_label} | "
         f"更新: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
-    if history_is_cached or quote.get("_cached"):
+    if history_is_cached or quote_is_nonlive:
         st.warning(
-            "当前至少一项行情来自最近成功的本地缓存；可查看数据，但不要据此执行新交易。",
+            "当前至少一项行情来自本地缓存或历史 K 线回退；"
+            "可查看数据，但决策卡会禁止新开仓。",
             icon=":material/cloud_off:",
         )
     if actual_source != source_key and source_key != "eastmoney":
@@ -413,16 +454,57 @@ def render_realtime_only(quote, stock_name, raw_code, history_failures):
             st.code("\n".join(history_failures), language=None)
 
 
-def render_trade_plan(plan):
-    """用可执行条件取代单一的“买/卖”结论。"""
-    st.subheader("交易计划", help="由综合信号、趋势、ATR 风险和仓位上限联合生成")
-    badge_color = "green" if plan["actionable"] else "orange"
-    badge_icon = ":material/check_circle:" if plan["actionable"] else ":material/pause_circle:"
-    st.badge(plan["action"], color=badge_color, icon=badge_icon)
+def render_trade_plan(
+    plan, *, current_price, volume_ratio, session_open, data_is_cached, median_turnover,
+):
+    """先显示实时决策门槛，再保留原有分批计划明细。"""
+    decision = assess_trade_decision(
+        plan,
+        current_price,
+        volume_ratio=volume_ratio,
+        session_open=session_open,
+        data_is_cached=data_is_cached,
+        median_turnover=median_turnover,
+    )
+    color_map = {
+        "orderable": "green", "ready_later": "blue", "waiting": "orange",
+        "watch": "gray", "blocked": "red",
+    }
+    icon_map = {
+        "orderable": ":material/check_circle:", "ready_later": ":material/schedule:",
+        "waiting": ":material/hourglass_top:", "watch": ":material/visibility:",
+        "blocked": ":material/block:",
+    }
+    st.subheader(
+        "交易决策卡",
+        help="综合分只负责发现候选；当前价格、盈亏比、止损距离和数据状态决定是否可执行。",
+    )
+    st.badge(
+        decision["headline"], color=color_map[decision["status_key"]],
+        icon=icon_map[decision["status_key"]],
+    )
+    st.write(f"**下一步：** {decision['next_action']}")
+    if decision["hard_blockers"]:
+        st.error("阻断原因：" + "；".join(decision["hard_blockers"]), icon=":material/block:")
+
+    with st.container(horizontal=True):
+        st.metric("现价位置", decision["price_location"], border=True)
+        st.metric("现价至目标一", f"{decision['reward_risk_now']:.2f}R", border=True)
+        st.metric("现价至止损", f"{decision['stop_distance_pct']:.1%}", border=True)
+        st.metric(
+            "条件满足后本次上限",
+            f"{decision['planned_tranche_shares']:,} 股",
+            f"风险 HKD {decision['planned_risk_now']:,.0f}",
+            border=True,
+        )
+
+    st.markdown("**计划参数**")
     st.caption(
         f"市场状态：{plan['regime']} | 数据日：{plan['data_date']} | "
-        f"每手 {plan['lot_size']} 股"
+        f"每手 {plan['lot_size']} 股 | 日线计划：{plan['action']}"
     )
+    if decision["median_turnover"] is not None:
+        st.caption(f"20 日中位成交额：HKD {decision['median_turnover']:,.0f}")
 
     with st.container(horizontal=True):
         st.metric(
@@ -430,7 +512,11 @@ def render_trade_plan(plan):
             f"{plan['entry_low']:.3f}~{plan['entry_high']:.3f}",
             border=True,
         )
-        st.metric("突破确认价", f"{plan['breakout_trigger']:.3f}", border=True)
+        st.metric(
+            "确认价 / 追价上限",
+            f"{plan['breakout_trigger']:.3f} / {decision['max_chase']:.3f}",
+            border=True,
+        )
         st.metric("保护止损", f"{plan['stop_loss']:.3f}", border=True)
         st.metric(
             "计划仓位",
@@ -440,15 +526,15 @@ def render_trade_plan(plan):
         )
 
     with st.container(horizontal=True):
-        st.metric("止盈一", f"{plan['target_1']:.3f}", "1.5R", border=True)
-        st.metric("止盈二", f"{plan['target_2']:.3f}", "2.5R", border=True)
+        st.metric("止盈一", f"{plan['target_1']:.3f}", f"{plan['reward_risk_1']:.2f}R", border=True)
+        st.metric("止盈二", f"{plan['target_2']:.3f}", f"{plan['reward_risk_2']:.2f}R", border=True)
         st.metric("计划最大亏损", f"HKD {plan['planned_risk']:,.0f}", border=True)
         st.metric("风险预算", f"HKD {plan['risk_budget']:,.0f}", border=True)
 
     check_labels = {True: "通过", False: "未通过"}
     checks = " ".join(
         f":{'green' if passed else 'red'}-badge[{check_labels[passed]} · {label}]"
-        for label, passed in plan["checks"].items()
+        for label, passed in decision["checks"].items()
     )
     st.markdown(checks)
     st.dataframe(
@@ -461,7 +547,15 @@ def render_trade_plan(plan):
         },
         key="trade_plan_steps",
     )
-    st.caption(f"失效条件：{plan['invalidation']}。计划仅用于模拟验证，不会自动提交实盘订单。")
+    with st.expander("实盘前人工复核（平台无法自动确认）", icon=":material/fact_check:"):
+        st.markdown(
+            "- 已检查公告、业绩、停复牌、公司行动和监管风险\n"
+            "- 已向券商核对该股票当前买卖单位，不假设一律为 100 股\n"
+            "- 盘口价差和可成交量能承受计划股数\n"
+            "- 已核对同主题持仓、组合总风险和汇率风险"
+        )
+    st.caption(f"失效条件：{plan['invalidation']}。决策卡用于研究与模拟验证，不会自动提交实盘订单。")
+    return decision
 
 
 def render_limited_history_guidance(df):
@@ -538,6 +632,11 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
     cols[4].metric("📦 量比", f"{_vr:.1f}x")
     _atr = df['ATR'].iloc[-1] if 'ATR' in df.columns else 0.0
     cols[5].metric("📏 ATR", f"{_atr:.3f}")
+    turnover_series = (
+        pd.to_numeric(df["close"], errors="coerce")
+        * pd.to_numeric(df["volume"], errors="coerce")
+    ).replace([np.inf, -np.inf], np.nan).dropna()
+    median_turnover = float(turnover_series.tail(20).median()) if not turnover_series.empty else 0.0
 
     st.divider()
 
@@ -547,6 +646,7 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
 
     # ============ 综合交易指导 ============
     st.subheader("🎯 日线交易指导（多策略投票）")
+    decision = None
     try:
         cs = evaluate_composite(df)
 
@@ -587,7 +687,17 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
             max_position_pct=max_pos,
             lot_size=lot_size,
         )
-        render_trade_plan(plan)
+        decision = render_trade_plan(
+            plan,
+            current_price=float(price),
+            volume_ratio=float(_vr),
+            session_open=is_hk_continuous_session(),
+            data_is_cached=(
+                bool(df.attrs.get("market_data_cached"))
+                or quote_requires_execution_block(quote)
+            ),
+            median_turnover=median_turnover,
+        )
 
         # 各策略投票明细
         with st.expander("📋 各策略投票明细", expanded=True):
@@ -655,9 +765,16 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
         st.metric("KDJ-J", f"{kdj_j:.1f}", delta="超买钝化" if kdj_j > 100 else "超卖钝化" if kdj_j < 0 else "正常")
         st.metric("布林 %b", f"{boll_pct:.2f}", delta="触上轨" if boll_pct > 0.95 else "触下轨" if boll_pct < 0.05 else "中轨附近")
 
-    # 风控建议
+    # ATR 风险预算只是理论上限，不应与交易决策卡的可执行数量混淆。
     st.divider()
-    st.subheader("🛡️ 风控建议")
+    st.subheader("🛡️ ATR 理论风险上限（非订单）")
+    if decision is not None:
+        st.caption(
+            f"当前决策卡：{decision['headline']}；当前可执行数量 "
+            f"{decision['order_shares_now']:,} 股。下方只回答“若已有有效信号，风险预算上限是多少”。"
+        )
+    else:
+        st.caption("下方是 ATR 风险预算上限，不构成当前订单数量。")
 
     atr_val = df["ATR"].iloc[-1]
     pos = risk_mgr.position_size(
@@ -669,10 +786,10 @@ def render_overview(df, quote, strategy, risk_mgr, capital, max_risk, max_pos, l
     )
 
     pos_cols = st.columns(4)
-    pos_cols[0].metric("建议股数", f"{pos['shares']:,}股")
-    pos_cols[1].metric("仓位金额", f"HKD {pos['position_value']:,.0f}", f"{pos['position_pct']:.1f}%")
-    pos_cols[2].metric("止损价", f"{pos['stop_loss_price']:.3f}", f"风险 HKD{pos['max_risk']:,.0f}")
-    pos_cols[3].metric("止盈价", f"{pos['take_profit_price']:.3f}")
+    pos_cols[0].metric("ATR 理论股数", f"{pos['shares']:,}股")
+    pos_cols[1].metric("理论仓位金额", f"HKD {pos['position_value']:,.0f}", f"{pos['position_pct']:.1f}%")
+    pos_cols[2].metric("ATR 止损参考", f"{pos['stop_loss_price']:.3f}", f"风险 HKD{pos['max_risk']:,.0f}")
+    pos_cols[3].metric("ATR 止盈参考", f"{pos['take_profit_price']:.3f}")
 
     # 情景分析
     st.caption("📉 情景分析（基于 ATR）")

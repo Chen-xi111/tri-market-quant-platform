@@ -13,7 +13,7 @@ An inspectable equity-research system for China A-shares, Hong Kong equities and
 | Robustness | Transaction-cost sensitivity, drawdown paths and parameter-neighborhood stability |
 | Market engineering | Symbol normalization, quote freshness, provider fallbacks and venue-specific fee/lot rules |
 | Production judgment | Bounded caches, process isolation, health checks, CI and deterministic demo fixtures |
-| Safety | Read-only public mode, paper-first execution and broker/live-port boundaries |
+| Safety | Read-only public mode, paper-first execution, broker/live-port boundaries and current-price trade gates |
 
 The full local services contain seven strategy families. The compact public demo deliberately uses four transparent long-only rules so every assumption can be inspected quickly.
 
@@ -90,11 +90,12 @@ timestamped data -> explainable signal -> one-bar execution lag
 - Fees, slippage, turnover, lot sizes and position limits remain visible.
 - Parameter scans show the full neighborhood instead of retaining only the best value.
 - Quote age and provider failures are surfaced rather than silently labelled live.
+- Local decision cards re-check price location, reward/risk, stop distance, cache state and market session before exposing any simulated order size.
 - Public mode cannot render local broker controls or child workspaces.
 
 The detailed evidence contract is in [docs/VALIDATION.md](docs/VALIDATION.md).
 
-Release history is tracked in [CHANGELOG.md](CHANGELOG.md). Before publishing, use the [public release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md); contribution and disclosure guidance live in [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+Release history is tracked in [CHANGELOG.md](CHANGELOG.md). Before publishing, use the [public release checklist](docs/PUBLIC_RELEASE_CHECKLIST.md) and [GitHub publishing guide](docs/GITHUB_PUBLISHING.md); contribution and disclosure guidance live in [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Tests and CI
 
@@ -102,7 +103,7 @@ Release history is tracked in [CHANGELOG.md](CHANGELOG.md). Before publishing, u
 ./test_all.sh
 ```
 
-The current suite contains **165 standard tests plus 19 generated subtests** across the public portfolio and three isolated market services. It covers accounting realism, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs the portfolio checks and each market suite independently.
+The current suite contains **187 standard tests plus 19 generated subtests** across the public portfolio and three isolated market services. It covers accounting realism, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs the portfolio checks and each market suite independently.
 
 ## Docker
 

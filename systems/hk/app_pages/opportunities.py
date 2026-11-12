@@ -55,6 +55,7 @@ def display_table(frame: pd.DataFrame, key: str) -> None:
         "selection_path": "入选路径", "change_pct": "当日涨跌幅",
         "turnover": "成交额", "discovery_source": "发现来源", "latest_close": "最新收盘",
         "stop_loss": "策略止损", "take_profit": "策略止盈",
+        "reward_risk": "现价盈亏比", "stop_distance_pct": "止损距离",
         "evaluation_status": "评分状态", "rejection_reasons": "未入选原因",
     }
     table = pd.DataFrame(index=frame.index)
@@ -83,6 +84,8 @@ def display_table(frame: pd.DataFrame, key: str) -> None:
             "最新收盘": st.column_config.NumberColumn(format="%.3f"),
             "策略止损": st.column_config.NumberColumn(format="%.3f"),
             "策略止盈": st.column_config.NumberColumn(format="%.3f"),
+            "现价盈亏比": st.column_config.NumberColumn(format="%.2fR"),
+            "止损距离": st.column_config.NumberColumn(format="percent"),
         },
     )
 
@@ -152,7 +155,8 @@ with st.expander("港股强信心门槛"):
     st.markdown(
         "候选需满足：综合机会分 ≥ 68、7 策略为强买且评分 ≥ +5、买入票 ≥ 3、"
         "卖出票 ≤ 1、信心 ≥ 43%、趋势质量 ≥ 70、热度 ≥ 55、流动性 ≥ 45、"
-        "日成交额 ≥ 500 万港元、止损止盈有效，并通过扩展窗口样本外验证。"
+        "日成交额 ≥ 500 万港元、止损止盈有效、现价盈亏比 ≥ 1.30R、"
+        "止损距离 ≤ 12%，并通过扩展窗口样本外验证。"
     )
 st.warning(
     "“强信心”只表示通过当前规则，不代表收益保证或个性化投资建议。下单前仍需复核公告、"

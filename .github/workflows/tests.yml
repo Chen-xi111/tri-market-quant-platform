@@ -20,6 +20,23 @@ jobs:
           python -m pip install -r requirements.txt pytest ruff
       - name: Check portfolio code
         run: python -m ruff check streamlit_app.py platform_hub.py app_pages portfolio scripts
+      - name: Check market decision code
+        run: >-
+          python -m ruff check
+          systems/cn/market_clock.py
+          systems/cn/trade_plan.py
+          systems/cn/trade_decision.py
+          systems/cn/fund_flow/opportunity_scanner.py
+          systems/hk/market_clock.py
+          systems/hk/trade_plan.py
+          systems/hk/trade_decision.py
+          systems/hk/trade_decision_shared.py
+          systems/hk/market_scan/opportunity_scanner.py
+          systems/us/quote_freshness.py
+          systems/us/stock_ranking.py
+          systems/us/trade_plan.py
+          systems/us/trade_decision.py
+          systems/us/trade_decision_shared.py
       - name: Validate public release boundary
         run: python scripts/release_check.py
       - name: Run public portfolio tests

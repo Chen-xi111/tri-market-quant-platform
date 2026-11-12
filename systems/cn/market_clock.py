@@ -6,7 +6,6 @@ from datetime import datetime, time
 from enum import Enum
 from zoneinfo import ZoneInfo
 
-
 SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 
@@ -15,6 +14,7 @@ class CNMarketPhase(Enum):
     MORNING = "morning"
     LUNCH = "lunch"
     AFTERNOON = "afternoon"
+    CLOSING_AUCTION = "closing_auction"
     CLOSED = "closed"
 
 
@@ -33,8 +33,10 @@ def cn_market_phase(moment: datetime | None = None) -> CNMarketPhase:
         return CNMarketPhase.MORNING
     if time(11, 30) < now < time(13, 0):
         return CNMarketPhase.LUNCH
-    if time(13, 0) <= now <= time(15, 0):
+    if time(13, 0) <= now < time(14, 57):
         return CNMarketPhase.AFTERNOON
+    if time(14, 57) <= now <= time(15, 0):
+        return CNMarketPhase.CLOSING_AUCTION
     return CNMarketPhase.CLOSED
 
 
