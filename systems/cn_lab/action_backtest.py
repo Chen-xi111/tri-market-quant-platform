@@ -2,14 +2,29 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import asdict, dataclass, field
 from math import sqrt
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from action_strategy import PROFILES, StrategyMode, buy_lot_size, prepare_features
+LAB_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = LAB_DIR.parents[1]
+CN_DIR = PROJECT_DIR / "systems" / "cn"
+for import_path in (PROJECT_DIR, CN_DIR):
+    if str(import_path) not in sys.path:
+        sys.path.insert(0, str(import_path))
+
 from trading_rules import calculate_trade_fee, price_limit_bounds
+
+from systems.cn_lab.action_strategy import (
+    PROFILES,
+    StrategyMode,
+    buy_lot_size,
+    prepare_features,
+)
 
 
 @dataclass(frozen=True)

@@ -19,6 +19,7 @@ REQUIRED_FILES = (
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
+    "LICENSE",
     "Dockerfile",
     "docker-compose.yml",
     "run_public.sh",

@@ -14,7 +14,7 @@ The preflight command verifies the project version, required public files, nine 
 ## Repository settings
 
 - Set the intended Git author name and email before the public push.
-- Choose and add a license deliberately; no license is selected automatically by this project.
+- Confirm the MIT license and copyright holder in `LICENSE` are still appropriate.
 - Enable GitHub Actions and private vulnerability reporting.
 - Protect `main` if other contributors will have write access.
 - Keep `.env`, `secrets.toml`, provider caches, broker logs and account state untracked.

@@ -4,13 +4,13 @@ Use this checklist for the first public push. The repository already uses Git an
 
 ## 1. Decide identity and licensing
 
-1. In GitHub, open **Settings → Emails** and copy either a verified email address or the GitHub-provided `noreply` address.
-2. Choose an open-source license deliberately. A public repository without a license remains visible, but normal copyright restrictions still apply.
+1. Confirm the target account is `Chen-xi111`.
+2. This repository uses the MIT license in `LICENSE`.
 3. Configure the identity only for this repository:
 
    ```bash
-   git config user.name "YOUR NAME"
-   git config user.email "YOUR_GITHUB_OR_NOREPLY_EMAIL"
+   git config user.name "Chen-xi111"
+   git config user.email "176824822+Chen-xi111@users.noreply.github.com"
    git config --get user.name
    git config --get user.email
    ```
@@ -46,18 +46,16 @@ Run the release gates again after committing. `git status --short` should then b
 
 ## 4. Create the GitHub repository
 
-1. On GitHub, select **New repository**.
-2. Use a concise name such as `tri-market-quant-platform`.
+1. On GitHub, select **New repository** under the `Chen-xi111` account.
+2. Use `tri-market-quant-platform`.
 3. Select **Public**.
 4. Do **not** initialize the repository with a README, `.gitignore` or license because those choices must be reconciled with the existing local history.
 5. Create the repository and copy its HTTPS URL.
 
 ## 5. Add the remote and push
 
-Replace `YOUR_USERNAME` with the GitHub account name:
-
 ```bash
-git remote add origin https://github.com/YOUR_USERNAME/tri-market-quant-platform.git
+git remote add origin git@github.com:Chen-xi111/tri-market-quant-platform.git
 git remote -v
 git push -u origin main
 ```

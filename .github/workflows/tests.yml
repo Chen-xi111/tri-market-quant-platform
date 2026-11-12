@@ -23,6 +23,7 @@ jobs:
       - name: Check market decision code
         run: >-
           python -m ruff check
+          systems/cn_lab
           systems/cn/market_clock.py
           systems/cn/trade_plan.py
           systems/cn/trade_decision.py
@@ -47,7 +48,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        market: [cn, hk, us]
+        include:
+          - market: cn
+            pythonpath: .
+          - market: cn_lab
+            pythonpath: ../cn
+          - market: hk
+            pythonpath: .
+          - market: us
+            pythonpath: .
 
     steps:
       - uses: actions/checkout@v4
@@ -61,4 +70,4 @@ jobs:
           python -m pip install -r requirements.txt pytest
       - name: Run ${{ matrix.market }} tests
         working-directory: systems/${{ matrix.market }}
-        run: python -m pytest -q
+        run: PYTHONPATH=${{ matrix.pythonpath }} python -m pytest -q

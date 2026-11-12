@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from action_backtest import run_backtest
-from action_strategy import build_action_plan, prepare_features
+from systems.cn_lab.action_backtest import run_backtest
+from systems.cn_lab.action_strategy import build_action_plan, prepare_features
 
 
 def trending_history(periods: int = 260) -> pd.DataFrame:

@@ -1,3 +1,5 @@
+name: tri-market-quant-platform
+
 services:
   quant-platform:
     build: .

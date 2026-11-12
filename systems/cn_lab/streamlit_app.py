@@ -10,21 +10,24 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-
 LAB_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = LAB_DIR.parents[1]
 CN_DIR = PROJECT_DIR / "systems" / "cn"
-if str(CN_DIR) not in sys.path:
-    sys.path.insert(0, str(CN_DIR))
+for import_path in (PROJECT_DIR, CN_DIR):
+    if str(import_path) not in sys.path:
+        sys.path.insert(0, str(import_path))
 
-import config as cfg  # noqa: E402
-from data_sources import SOURCES  # noqa: E402
-from market_data import fetch_history, fetch_quote, quote_from_history  # noqa: E402
-from trading_rules import board_name, price_limit_bounds  # noqa: E402
+from trading_rules import board_name, price_limit_bounds
 
-from action_backtest import BacktestResult, evaluate_strategy  # noqa: E402
-from action_strategy import PROFILES, build_action_plan, score_breakdown  # noqa: E402
-
+import config as cfg
+from data_sources import SOURCES
+from market_data import fetch_history, fetch_quote, quote_from_history
+from systems.cn_lab.action_backtest import BacktestResult, evaluate_strategy
+from systems.cn_lab.action_strategy import (
+    PROFILES,
+    build_action_plan,
+    score_breakdown,
+)
 
 st.set_page_config(
     page_title="A 股短周期策略实验室",

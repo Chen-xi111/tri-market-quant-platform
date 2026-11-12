@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SUITES = (
     ("portfolio", ROOT, ("portfolio/tests",)),
     ("cn", ROOT / "systems/cn", ()),
+    ("cn_lab", ROOT / "systems/cn_lab", ()),
     ("hk", ROOT / "systems/hk", ()),
     ("us", ROOT / "systems/us", ()),
 )
@@ -31,7 +32,7 @@ def main() -> int:
     if failures:
         print("\nFailed suites: " + ", ".join(failures), file=sys.stderr)
         return 1
-    print("\nAll portfolio and market test suites passed.")
+    print("\nAll portfolio, strategy-lab and market test suites passed.")
     return 0
 
 

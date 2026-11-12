@@ -2,7 +2,7 @@
 
 All notable public-facing changes are documented here.
 
-## 0.4.0 — 2026-09-12
+## 0.4.0 — 2026-11-12
 
 ### Added
 
@@ -10,6 +10,7 @@ All notable public-facing changes are documented here.
 - Explicit blockers for stale cached quotes, prices beyond the chase limit, invalid stop placement and insufficient reward/risk.
 - Session-aware simulated-order sizing that respects the original risk budget, position cap and venue lot size.
 - Direct local-workspace entrances on the full launcher home page while preserving the broker-free public view.
+- An isolated A-share short-horizon strategy lab with next-session execution, T+1 constraints, conservative same-bar handling and out-of-sample diagnostics.
 
 ### Changed
 
@@ -20,12 +21,14 @@ All notable public-facing changes are documented here.
 - The US execution decision card now refreshes with the live quote while signal direction, entry zones and backtests remain anchored to completed daily bars.
 - US chart fonts are registered explicitly so Chinese instrument names render without missing-glyph warnings.
 - GitHub Actions now lints the cross-market decision, session and ranking modules in addition to the public portal.
+- The all-suite runner and GitHub Actions now verify the A-share strategy lab as a first-class module.
 - Historical-bar quote fallbacks in the China and Hong Kong workspaces are now explicit no-new-position states.
-- Test-count documentation now matches the expanded 187-test suite plus 19 generated subtests.
+- Test-count documentation now matches the expanded 191-test suite plus 19 generated subtests.
 
 ### Verified
 
 - All portfolio, China, Hong Kong and US test suites pass after the decision-gate integration.
+- The A-share strategy lab passes dedicated look-ahead, T+1, execution-order and lot-sizing tests.
 - Python 3.11 target parsing, public-release boundaries, fixture checksums and secret-path checks pass.
 
 ## 0.3.2 — 2026-08-31
