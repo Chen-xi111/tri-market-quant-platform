@@ -1,8 +1,8 @@
+import sys
 import unittest
 from datetime import datetime, timezone
 from types import ModuleType
 from unittest.mock import MagicMock, patch
-import sys
 
 import pandas as pd
 
@@ -102,6 +102,15 @@ class QuoteFreshnessTests(unittest.TestCase):
         with patch.object(source, "opend_is_listening", return_value=False):
             result = source.get_realtime()
         self.assertIn("11111", result["error"])
+
+    def test_futu_reports_missing_optional_sdk_after_port_probe(self):
+        source = FutuOpenDSource("AAPL")
+        with (
+            patch.object(source, "opend_is_listening", return_value=True),
+            patch("data_sources.futu_source.futu_available", return_value=False),
+        ):
+            result = source.get_realtime()
+        self.assertIn("futu-api", result["error"])
 
     def test_futu_reuses_connection_and_preserves_millisecond_timestamp(self):
         context = MagicMock()

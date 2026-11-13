@@ -2,6 +2,14 @@
 
 All notable public-facing changes are documented here.
 
+## 0.4.1 — 2026-11-13
+
+### Fixed
+
+- Ruff import classification is now explicit and the CI version is pinned, keeping local and Linux checks reproducible.
+- Optional IBKR and Futu SDK checks now preserve actionable local-port diagnostics in clean CI environments.
+- Broker-adapter tests now cover both missing-SDK and unavailable-service paths; the suite contains 193 standard tests plus 19 generated subtests.
+
 ## 0.4.0 — 2026-11-12
 
 ### Added

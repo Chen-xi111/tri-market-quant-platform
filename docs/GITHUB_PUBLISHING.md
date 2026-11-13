@@ -62,21 +62,21 @@ git push -u origin main
 
 Use a GitHub-supported authentication method if prompted; do not paste credentials into project files.
 
-## 6. Tag and package v0.4.0
+## 6. Tag and package v0.4.1
 
 Build the archive only after the release commit exists:
 
 ```bash
 mkdir -p dist
-git archive --format=zip --prefix=tri-market-quant-platform-v0.4.0/ --output=dist/tri-market-quant-platform-v0.4.0.zip HEAD
-shasum -a 256 dist/tri-market-quant-platform-v0.4.0.zip > dist/tri-market-quant-platform-v0.4.0.zip.sha256
-unzip -tq dist/tri-market-quant-platform-v0.4.0.zip
-shasum -a 256 -c dist/tri-market-quant-platform-v0.4.0.zip.sha256
-git tag -a v0.4.0 -m "v0.4.0"
-git push origin v0.4.0
+git archive --format=zip --prefix=tri-market-quant-platform-v0.4.1/ --output=dist/tri-market-quant-platform-v0.4.1.zip HEAD
+shasum -a 256 dist/tri-market-quant-platform-v0.4.1.zip > dist/tri-market-quant-platform-v0.4.1.zip.sha256
+unzip -tq dist/tri-market-quant-platform-v0.4.1.zip
+shasum -a 256 -c dist/tri-market-quant-platform-v0.4.1.zip.sha256
+git tag -a v0.4.1 -m "v0.4.1"
+git push origin v0.4.1
 ```
 
-On the GitHub repository, open **Releases → Draft a new release**, choose tag `v0.4.0`, generate or write release notes, attach the ZIP and checksum, then publish.
+On the GitHub repository, open **Releases → Draft a new release**, choose tag `v0.4.1`, generate or write release notes, attach the ZIP and checksum, then publish.
 
 ## 7. Verify the public result
 

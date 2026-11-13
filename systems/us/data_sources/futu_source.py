@@ -11,6 +11,7 @@ import atexit
 from datetime import datetime, timezone
 import importlib.util
 import socket
+import sys
 from threading import RLock
 from time import monotonic, sleep
 from typing import Any, ClassVar
@@ -19,10 +20,15 @@ import pandas as pd
 
 import config as cfg
 from market_clock import NEW_YORK_TZ
+
 from .base import DataSource
 
 
-FUTU_AVAILABLE = importlib.util.find_spec("futu") is not None
+def futu_available() -> bool:
+    """Check at request time so tests and optional late installs are respected."""
+    if "futu" in sys.modules:
+        return True
+    return importlib.util.find_spec("futu") is not None
 
 
 class FutuOpenDSource(DataSource):
@@ -113,10 +119,10 @@ class FutuOpenDSource(DataSource):
             raise RuntimeError("富途 OpenD 行情连接重建失败")
 
     def get_realtime(self) -> dict:
-        if not FUTU_AVAILABLE:
-            return {"error": "未安装 futu-api Python 客户端"}
         if not self.opend_is_listening():
             return {"error": "富途 OpenD 未启动或 11111 端口未监听"}
+        if not futu_available():
+            return {"error": "未安装 futu-api Python 客户端"}
 
         from futu import RET_OK
 

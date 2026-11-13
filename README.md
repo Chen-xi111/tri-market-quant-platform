@@ -103,7 +103,7 @@ Release history is tracked in [CHANGELOG.md](CHANGELOG.md). Before publishing, u
 ./test_all.sh
 ```
 
-The current suite contains **191 standard tests plus 19 generated subtests** across the public portfolio, the A-share strategy lab and three isolated market services. It covers accounting realism, look-ahead protection, T+1 execution, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs every suite independently.
+The current suite contains **193 standard tests plus 19 generated subtests** across the public portfolio, the A-share strategy lab and three isolated market services. It covers accounting realism, look-ahead protection, T+1 execution, robustness grids, market clocks, data-source switching, scanners, watchlists, venue constraints, broker safety, public-boundary behavior and Streamlit page rendering. GitHub Actions runs every suite independently.
 
 ## Docker
 

@@ -17,14 +17,13 @@ for import_path in (PROJECT_DIR, CN_DIR):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from trading_rules import calculate_trade_fee, price_limit_bounds
-
 from systems.cn_lab.action_strategy import (
     PROFILES,
     StrategyMode,
     buy_lot_size,
     prepare_features,
 )
+from trading_rules import calculate_trade_fee, price_limit_bounds
 
 
 @dataclass(frozen=True)

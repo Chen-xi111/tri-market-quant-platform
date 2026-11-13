@@ -26,6 +26,15 @@ class IBKRSafetyTests(unittest.TestCase):
         self.assertIn("127.0.0.1:7497 未监听", broker.last_error)
         self.assertIn("启用 ActiveX 和 Socket 客户端", broker.last_error)
 
+    def test_missing_optional_sdk_is_reported_after_socket_probe(self):
+        broker = IBKRBroker(port=7497, paper_only=True, timeout=5)
+        with (
+            patch("execution.ibkr_broker.socket.create_connection"),
+            patch("execution.ibkr_broker.IBAPI_AVAILABLE", False),
+        ):
+            self.assertFalse(broker.connect())
+        self.assertIn("ibapi", broker.last_error)
+
 
 if __name__ == "__main__":
     unittest.main()

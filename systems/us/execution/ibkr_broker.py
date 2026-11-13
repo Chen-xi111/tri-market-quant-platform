@@ -18,7 +18,6 @@ from typing import List, Optional
 import config as cfg
 from .base import Broker, Order, OrderResult, OrderSide, OrderStatus
 
-
 IBAPI_AVAILABLE = importlib.util.find_spec("ibapi") is not None
 PAPER_PORTS = frozenset({7497, 4002})
 LIVE_PORTS = frozenset({7496, 4001})
@@ -260,9 +259,6 @@ class IBKRBroker(Broker):
         if self.paper_only and self.port in LIVE_PORTS:
             self._last_error = "拒绝连接 IBKR 实盘端口"
             return False
-        if not IBAPI_AVAILABLE:
-            self._last_error = "未安装 IBKR 官方 ibapi；请查看 IBKR_SETUP.md"
-            return False
         try:
             # TWS 关闭 Socket API 时，ibapi 默认会等到超时且最终只给出
             # connectionClosed。先做一次本机端口探测，可以立即给出可操作提示。
@@ -277,6 +273,9 @@ class IBKRBroker(Broker):
                 "API → 设置”，勾选“启用 ActiveX 和 Socket 客户端”，并确认 "
                 f"Socket 端口为 {self.port}。"
             )
+            return False
+        if not IBAPI_AVAILABLE:
+            self._last_error = "未安装 IBKR 官方 ibapi；请查看 IBKR_SETUP.md"
             return False
         try:
             app = _IBApp()

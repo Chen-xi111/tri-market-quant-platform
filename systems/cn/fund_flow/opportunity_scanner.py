@@ -13,14 +13,14 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from quant_research import QuantResearchEngine, ResearchEvidence
-from trade_decision import risk_reward_metrics
-from trading_rules import price_limit_pct
-from watchlist import load_user_stocks
 
 import config as cfg
 from market_data import fetch_history
+from quant_research import QuantResearchEngine, ResearchEvidence
 from strategies.composite import CompositeStrategy
+from trade_decision import risk_reward_metrics
+from trading_rules import price_limit_pct
+from watchlist import load_user_stocks
 
 from .pipeline import SHANGHAI_TZ, ProgressCallback, ScanSnapshot, SnapshotStore
 

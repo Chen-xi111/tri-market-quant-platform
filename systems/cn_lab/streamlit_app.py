@@ -17,8 +17,6 @@ for import_path in (PROJECT_DIR, CN_DIR):
     if str(import_path) not in sys.path:
         sys.path.insert(0, str(import_path))
 
-from trading_rules import board_name, price_limit_bounds
-
 import config as cfg
 from data_sources import SOURCES
 from market_data import fetch_history, fetch_quote, quote_from_history
@@ -28,6 +26,7 @@ from systems.cn_lab.action_strategy import (
     build_action_plan,
     score_breakdown,
 )
+from trading_rules import board_name, price_limit_bounds
 
 st.set_page_config(
     page_title="A 股短周期策略实验室",
